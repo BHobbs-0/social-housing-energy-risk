@@ -64,7 +64,7 @@ Full numbers are in [`reports/summary.md`](reports/summary.md) and [`reports/met
 
 ### Reading the scores
 
-ROC AUC measures how well the model **ranks** homes. A score of 0.90 means that if you pick one home that is below C and one that is not, the model gives the below-C home the higher risk score about 90% of the time. It is not the same as "90% accurate".
+ROC AUC measures how well the model ranks homes by risk: 0.5 is no better than chance and 1.0 is a perfect ranking.
 
 ### How a landlord could use it
 
