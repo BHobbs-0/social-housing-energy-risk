@@ -1,0 +1,188 @@
+# Which social homes will miss EPC C? Predicting and explaining energy efficiency risk in England's social housing
+
+Social rented homes in England must reach **EPC band C by 1 April 2030**. Landlords need to know which homes are most at risk, but many do not hold up-to-date survey data for every property.
+
+This project uses **136,379 Energy Performance Certificates for social rented homes** in five local authorities to answer two questions:
+
+1. **Prediction:** using only what a typical asset register holds (property type, built form, build year, floor area, fuel), how well can we identify homes likely to be below band C?
+2. **Explanation:** what actually drives the risk, and how much better do we do when we also know about walls, roofs, insulation and heating?
+
+## Headline results
+
+**31% of the social homes in the data (42,646) are currently rated below band C.**
+
+![Model performance by feature set](reports/figures/01_feature_set_comparison.png)
+
+- **Asset-register data alone gets you a useful ranking.** A gradient boosting model using only property type, built form, build year, floor area and fuel reaches a ROC AUC of **0.82** on held-out homes.
+- **Survey data adds a lot.** Adding wall insulation, loft insulation, roof and heating details lifts this to **0.90**, and roughly halves the gap to a perfect ranking. This quantifies the value of a stock condition survey.
+- **It transfers to areas the model has never seen.** Training on four areas and testing on the fifth gives **0.76** (core) and **0.87** (extended) across all five areas. These are the realistic figures for a landlord applying the model to new stock.
+- **Gradient boosting beats logistic regression in every comparison** (0.82 vs 0.76 core, 0.90 vs 0.86 extended). Combinations of features matter, which a linear model cannot fully capture.
+
+### What drives the risk?
+
+![Permutation importance, extended model](reports/figures/03_importance_extended.png)
+
+Wall insulation is the single strongest signal, followed by property type, loft insulation and build year.
+
+| Uninsulated walls | Main fuel | Build year |
+|---|---|---|
+| ![Wall insulation](reports/figures/04_pdp_extended_wall_insulation.png) | ![Main fuel](reports/figures/04_pdp_core_fuel_group.png) | ![Build year](reports/figures/04_pdp_core_construction_year.png) |
+
+- **Uninsulated walls:** 64% of homes with uninsulated walls are below C, against 23% with insulated walls. The model puts the risk at 69% vs 26% once other factors are held constant.
+- **Off-gas homes:** homes heated by oil (61%), electricity (53%) or communal systems (51%) have around double the predicted risk of mains gas homes (27%).
+- **Build era:** risk falls steadily from about 50% for pre-1920 homes to almost zero for homes built after 2003.
+- **Houses and bungalows** (39% and 42% below C) are far more likely to be below C than flats (22%), which lose less heat through shared walls, floors and ceilings.
+
+**Highest-risk archetypes with at least 150 homes in the test set:**
+
+| Property type | Build era | Main fuel | Homes | Actual below C | Predicted |
+|---|---|---|---|---|---|
+| House | 1983-2002 | Electricity | 180 | 79% | 77% |
+| House | 1965-82 | Communal | 188 | 62% | 58% |
+| Flat | 1945-64 | Electricity | 373 | 58% | 60% |
+| House | pre-1919 | Mains gas | 1,584 | 51% | 52% |
+| Flat | 1965-82 | Electricity | 830 | 48% | 48% |
+| House | 1919-44 | Mains gas | 4,156 | 47% | 46% |
+
+The interwar gas-heated house is not the riskiest archetype, but it is by far the **largest** at-risk group: **9,305 of them are below C** across the full dataset, more than any other archetype. That makes it a natural target for a retrofit programme.
+
+### A methodology change shows up in the data
+
+![Share below C over time](reports/figures/00_below_c_over_time.png)
+
+The share of assessed homes below C fell from around 40% in 2015 to 20% in 2024, then rose again after the assessment method changed to **RdSAP 10 on 15 June 2025**. Holding everything else constant, the model estimates that being assessed under RdSAP 10 adds about **3.4 percentage points** to a home's risk of being below C. Comparing ratings across this change without adjusting for it could make a landlord's stock look worse than it is, so the models include the assessment year and an RdSAP 10 flag as controls.
+
+### How well calibrated is it?
+
+![Calibration](reports/figures/02_calibration_extended.png)
+
+Predicted probabilities track observed rates closely, so a predicted 40% risk really does mean roughly 40 in 100 such homes are below C. That makes the scores usable for planning, not just ranking.
+
+Full numbers are in [`reports/summary.md`](reports/summary.md) and [`reports/metrics.json`](reports/metrics.json).
+
+## Data
+
+**Source:** [Get energy performance of buildings data](https://get-energy-performance-data.communities.gov.uk/) (MHCLG). This GOV.UK service replaced the old Open Data Communities EPC portal in 2026.
+
+**Areas used:** Manchester (46,296 homes), Sheffield (38,913), Cornwall (19,863), Newcastle upon Tyne (17,800) and Southwark (13,507). Together they mix large northern cities, an inner London borough and a rural, largely off-gas county. Certificates lodged from January 2015 to September 2026, latest certificate per home.
+
+**Reproducing it**
+
+1. Sign in with GOV.UK One Login on the service above and download domestic EPC certificate data.
+2. The downloads are large (over 1GB for a couple of local authorities), so shrink them first:
+   ```bash
+   python scripts/extract_subset.py path/to/download.csv          # default areas
+   python scripts/extract_subset.py path/to/download.zip --areas E08000003 E09000028
+   ```
+   This keeps social rented homes since 2015, keeps the latest certificate per home, drops addresses and writes a small `epc_social_subset.csv.gz`.
+3. Put that file (or the raw CSVs) anywhere under `data/raw/` and run the pipeline.
+
+Raw data is git-ignored and never committed. Check the service's licensing guidance before redistributing any derived data.
+
+**If a column name has changed:** the pipeline normalises column names automatically. If it reports a missing column, add the new name to `ALIASES` in `src/housing_epc/columns.py`.
+
+## Method
+
+| Step | What happens | Where |
+|---|---|---|
+| Load | Stream CSVs in chunks, keep social rented tenure and certificates lodged since 2015 | `load.py` |
+| Deduplicate | Keep the latest certificate per home (UPRN, falling back to address and postcode) | `features.py` |
+| Features | Parse age bands, fuel, wall type and insulation, roof and loft depth, heating system, glazing | `features.py` |
+| Target | `below_c` = current rating D, E, F or G | `config.py` |
+| Models | Logistic regression baseline and histogram gradient boosting, on **core** and **extended** feature sets | `model.py` |
+| Validation | Stratified 80/20 held-out test set, plus leave-one-local-authority-out cross-validation | `model.py` |
+| Explanation | Permutation importance, partial dependence, SHAP values (optional), archetype and area tables | `explain.py` |
+
+### Feature sets
+
+- **Core (asset register):** property type, built form, build year, floor area, main fuel, mains gas availability
+- **Extended (stock survey):** core plus wall type, wall insulation, roof type, loft insulation depth, heating system, multiple glazing percentage
+- **Controls (both sets):** year the EPC was lodged and whether it was assessed under RdSAP 10. To score a home as if assessed today, set these to the current date.
+
+### Avoiding leakage
+
+An EPC rating is calculated from the certificate's own inputs. Feeding the model fields such as the SAP score, running costs, CO₂ or the per-element efficiency ratings would let it reverse-engineer the formula and report a meaningless near-perfect score. These are listed in `LEAKAGE_COLUMNS` and excluded, and a test checks they never reach the feature table.
+
+### Checking the controls are not a back door
+
+Landlords often commission EPCs in large batches, so assessment dates could act as a proxy for area and inflate the scores. To test this, the models were rerun without the date controls. The controls improve performance on unseen areas too (core: 0.740 without, 0.757 with), so they capture genuine time effects rather than identifying the area.
+
+## Running it
+
+```bash
+python -m venv .venv
+source .venv/bin/activate            # Windows: .venv\Scripts\activate
+pip install -e ".[shap,dev]"
+
+python -m housing_epc.pipeline                    # full run on data/raw (about 2 minutes for 136k homes)
+python -m housing_epc.pipeline --sample 200000    # random subsample for very large inputs
+python -m housing_epc.pipeline --theme light      # light charts instead of the default dark
+pytest                                            # unit tests
+```
+
+Charts default to a dark theme that matches GitHub's dark mode.
+
+**No data yet?** Generate a synthetic file to check everything runs (its numbers are invented, never publish them):
+
+```bash
+python scripts/make_synthetic_data.py --rows 30000
+python -m housing_epc.pipeline --raw data/synthetic
+```
+
+## Outputs
+
+| File | Contents |
+|---|---|
+| `reports/summary.md` | Plain-English results summary |
+| `reports/metrics.json` | All metrics, including each leave-one-area-out fold |
+| `reports/figures/00_below_c_over_time.png` | Share below C by quarter, with RdSAP 10 marked |
+| `reports/figures/01_feature_set_comparison.png` | Core vs extended, logistic vs boosting |
+| `reports/figures/02_calibration_extended.png` | Are predicted probabilities trustworthy? |
+| `reports/figures/03_importance_*.png` | Permutation importance |
+| `reports/figures/04_pdp_*.png` | How risk changes with build year, fuel, insulation and more |
+| `reports/figures/05_*`, `06_*` | SHAP importance and dependence (generated when `shap` is installed) |
+| `reports/archetype_risk.csv` | Risk by property type, build era and fuel |
+| `reports/local_authority_gap.csv` | Observed vs expected below-C share by area |
+
+## Project structure
+
+```
+├── data/
+│   ├── raw/                    # EPC downloads go here (git-ignored)
+│   └── processed/              # cleaned modelling table (git-ignored)
+├── notebooks/
+│   └── 01_explore.ipynb        # exploratory analysis of the cleaned table
+├── reports/                    # metrics, tables and figures
+├── scripts/
+│   ├── extract_subset.py       # shrink large downloads to an address-free subset
+│   └── make_synthetic_data.py  # synthetic data for testing
+├── src/housing_epc/
+│   ├── config.py               # settings, feature sets, leakage list
+│   ├── columns.py              # column-name normalisation
+│   ├── load.py                 # chunked loading and tenure filter
+│   ├── features.py             # cleaning and feature engineering
+│   ├── model.py                # training and validation
+│   ├── explain.py              # importance, partial dependence, SHAP, tables
+│   └── pipeline.py             # end-to-end command line entry point
+└── tests/
+```
+
+## Limitations
+
+- **Five areas, not all of England:** results describe these five local authorities. They span very different stock, and the leave-one-area-out results suggest the model transfers reasonably, but national figures would need the full dataset.
+- **Coverage:** only homes with a certificate are included. Most social homes have one because an EPC is needed to let a property, but recently let or recently surveyed homes may be over-represented.
+- **Certificates age:** a certificate describes the home when it was assessed. Improvements made since then are not captured.
+- **"Assumed" values:** where an assessor cannot see insulation, RdSAP assumes it from the build era. Some wall and roof insulation values are therefore defaults rather than observations.
+- **Explanation is not causation:** importance and partial dependence describe what the model learned. They point to where to look, not to proof that changing one feature will change a rating.
+
+## Ideas for next steps
+
+- Scale up to the full national dataset and compare regions.
+- Join deprivation data (Index of Multiple Deprivation via postcode to LSOA): are the highest-risk homes concentrated in the most deprived areas?
+- Use the recommendations file to estimate the cost of bringing each archetype up to band C.
+- Predict the SAP score directly (regression) to rank homes by how far they are from C.
+- Link to the English Housing Survey to explore whether low energy efficiency is associated with damp and mould.
+
+## Licence
+
+Code: MIT (see `LICENSE`). EPC data: subject to MHCLG's licence terms.

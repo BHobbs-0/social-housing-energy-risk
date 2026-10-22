@@ -1,0 +1,127 @@
+{
+  "metrics": {
+    "core": {
+      "features": [
+        "property_type",
+        "built_form",
+        "fuel_group",
+        "construction_year",
+        "total_floor_area",
+        "mains_gas",
+        "lodgement_year",
+        "rdsap10"
+      ],
+      "logistic_regression": {
+        "roc_auc": 0.758462177022541,
+        "pr_auc": 0.5603600934939187,
+        "brier": 0.17857278444442864,
+        "accuracy": 0.7216967297257663,
+        "base_rate": 0.3126924769027717,
+        "n": 27276
+      },
+      "gradient_boosting": {
+        "roc_auc": 0.8172223849246136,
+        "pr_auc": 0.6771452572645684,
+        "brier": 0.1560250807290528,
+        "accuracy": 0.7636017011291978,
+        "base_rate": 0.3126924769027717,
+        "n": 27276
+      },
+      "boosting_iterations": 600
+    },
+    "extended": {
+      "features": [
+        "property_type",
+        "built_form",
+        "fuel_group",
+        "wall_type",
+        "wall_insulation",
+        "roof_type",
+        "heating_system",
+        "construction_year",
+        "total_floor_area",
+        "mains_gas",
+        "lodgement_year",
+        "rdsap10",
+        "loft_insulation_mm",
+        "glazing_pct"
+      ],
+      "logistic_regression": {
+        "roc_auc": 0.8569621829296102,
+        "pr_auc": 0.7519482913707316,
+        "brier": 0.13712128751810604,
+        "accuracy": 0.8010338759348878,
+        "base_rate": 0.3126924769027717,
+        "n": 27276
+      },
+      "gradient_boosting": {
+        "roc_auc": 0.9041240212378561,
+        "pr_auc": 0.8379556810491114,
+        "brier": 0.11098398114756854,
+        "accuracy": 0.8392726206188591,
+        "base_rate": 0.3126924769027717,
+        "n": 27276
+      },
+      "boosting_iterations": 600
+    }
+  },
+  "leave_areas_out_cv": {
+    "core": {
+      "fold_roc_auc": [
+        0.7315018077441369,
+        0.7410828988248082,
+        0.7944536404700846,
+        0.7392256925091074,
+        0.7794603566526188
+      ],
+      "held_out_areas": [
+        [
+          "Manchester"
+        ],
+        [
+          "Sheffield"
+        ],
+        [
+          "Cornwall"
+        ],
+        [
+          "Newcastle upon Tyne"
+        ],
+        [
+          "Southwark"
+        ]
+      ],
+      "mean_roc_auc": 0.7571448792401512,
+      "std_roc_auc": 0.025006302327105927
+    },
+    "extended": {
+      "fold_roc_auc": [
+        0.863502399458429,
+        0.8681155013883692,
+        0.8647701228587631,
+        0.8585072514172885,
+        0.9001665279540343
+      ],
+      "held_out_areas": [
+        [
+          "Manchester"
+        ],
+        [
+          "Sheffield"
+        ],
+        [
+          "Cornwall"
+        ],
+        [
+          "Newcastle upon Tyne"
+        ],
+        [
+          "Southwark"
+        ]
+      ],
+      "mean_roc_auc": 0.8710123606153768,
+      "std_roc_auc": 0.014900336046120666
+    }
+  },
+  "n_homes": 136379
+}
