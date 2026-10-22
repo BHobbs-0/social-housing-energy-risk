@@ -1,0 +1,24 @@
+# Data: EPC downloads contain addresses and are large. Never commit them.
+data/raw/*
+data/processed/*
+data/synthetic/
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
+# Model artefacts
+models/
+*.joblib
+
+# Reports (figures, summary, aggregated tables) ARE committed: they contain no addresses.
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+.ipynb_checkpoints/
+*.egg-info/
+
+# Secrets
+.env
