@@ -60,6 +60,25 @@ Predicted probabilities track observed rates closely, so a predicted 40% risk re
 
 Full numbers are in [`reports/summary.md`](reports/summary.md) and [`reports/metrics.json`](reports/metrics.json).
 
+## What the model is for (and what it isn't)
+
+### Reading the scores
+
+ROC AUC measures how well the model **ranks** homes. A score of 0.90 means that if you pick one home that is below C and one that is not, the model gives the below-C home the higher risk score about 90% of the time. It is not the same as "90% accurate".
+
+### How a landlord could use it
+
+- **Find at-risk homes without an up-to-date rating.** Score every home from the asset register, including homes with no EPC or an old one, and survey the highest-risk homes first. The core model is the realistic choice here because it only needs data landlords already hold: it scores 0.82 on held-out homes and 0.76 in areas it has never seen.
+- **Size the problem today.** Because the predicted probabilities are well calibrated, adding them up gives an expected count. If 1,000 unrated homes have an average predicted risk of 35%, roughly 350 of them are likely to be below C. That gives a planning and budgeting figure without surveying every home.
+- **Target retrofit spending.** Wall insulation, loft insulation and off-gas heating are the strongest drivers of risk, which points to the interventions most likely to move homes over the line.
+- **Decide whether a stock condition survey is worth it.** The jump from 0.82 (asset register only) to 0.90 (with survey data) puts a number on how much better a landlord can target work once they have survey data.
+
+### What it does not do
+
+**It does not forecast how many homes will be below C in 2030.** The model is a snapshot: it estimates how likely a home is to be below C at the time it was assessed, based on its characteristics. It knows nothing about how quickly homes are being improved, so it cannot project the stock forward.
+
+The over-time chart above should not be read as a stock-wide trend either. Each quarter shows the homes that happened to be assessed then (mostly homes being re-let), not a consistent picture of the whole stock, so extending that line to 2030 would be misleading. A forecast needs improvement rates measured on the same homes over time; see the first item in [Ideas for next steps](#ideas-for-next-steps).
+
 ## Data
 
 **Source:** [Get energy performance of buildings data](https://get-energy-performance-data.communities.gov.uk/) (MHCLG). This GOV.UK service replaced the old Open Data Communities EPC portal in 2026.
@@ -70,10 +89,10 @@ Full numbers are in [`reports/summary.md`](reports/summary.md) and [`reports/met
 
 1. Sign in with GOV.UK One Login on the service above and download domestic EPC certificate data.
 2. The downloads are large (over 1GB for a couple of local authorities), so shrink them first:
-   ```bash
+```bash
    python scripts/extract_subset.py path/to/download.csv          # default areas
    python scripts/extract_subset.py path/to/download.zip --areas E08000003 E09000028
-   ```
+```
    This keeps social rented homes since 2015, keeps the latest certificate per home, drops addresses and writes a small `epc_social_subset.csv.gz`.
 3. Put that file (or the raw CSVs) anywhere under `data/raw/` and run the pipeline.
 
@@ -177,6 +196,7 @@ python -m housing_epc.pipeline --raw data/synthetic
 
 ## Ideas for next steps
 
+- **Forecast the position in 2030.** Homes with more than one certificate show how often ratings improve, for example how many D-rated homes become C each year and how that varies by archetype. Combining those rates with the model's risk scores would give a projection to April 2030 under scenarios such as "current pace of improvement" against "planned retrofit programme". Homes that get reassessed are not a random sample, and the RdSAP 10 change affects comparisons across mid-2025, so both would need handling.
 - Scale up to the full national dataset and compare regions.
 - Join deprivation data (Index of Multiple Deprivation via postcode to LSOA): are the highest-risk homes concentrated in the most deprived areas?
 - Use the recommendations file to estimate the cost of bringing each archetype up to band C.
