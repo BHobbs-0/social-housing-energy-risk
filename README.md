@@ -2,35 +2,43 @@
 
 Social rented homes in England must reach **EPC band C by 1 April 2030**. Landlords need to know which homes are most at risk, but many do not hold up-to-date survey data for every property.
 
-This project uses **136,379 Energy Performance Certificates for social rented homes** in five local authorities to answer two questions:
+This project uses **136,379 Energy Performance Certificates for social rented homes** in five local authorities (Manchester, Sheffield, Cornwall, Newcastle upon Tyne and Southwark) to answer two questions:
 
-1. **Prediction:** using only what a typical asset register holds (property type, built form, build year, floor area, fuel), how well can we identify homes likely to be below band C?
-2. **Explanation:** what actually drives the risk, and how much better do we do when we also know about walls, roofs, insulation and heating?
+1. **Prediction:** using only what a typical asset register holds (property type, built form, build year, floor area, fuel), how well can we identify homes likely to be below band C? This is the **core** model.
+2. **Explanation:** what actually drives the risk, and how much better do we do when we also know about walls, roofs, insulation and heating? This is the **extended** model.
 
 ## Headline results
 
-**31% of the social homes in the data (42,646) are currently rated below band C.**
+**31% of the social homes in the data (42,646) were rated below band C on their latest certificate (lodged between 2015 and 2026).**
+
+### How well does it predict?
 
 ![Model performance by feature set](reports/figures/01_feature_set_comparison.png)
 
-- **Asset-register data alone gets you a useful ranking.** A gradient boosting model using only property type, built form, build year, floor area and fuel reaches a ROC AUC of **0.82** on held-out homes.
-- **Survey data adds a lot.** Adding wall insulation, loft insulation, roof and heating details lifts this to **0.90**, and roughly halves the gap to a perfect ranking. This quantifies the value of a stock condition survey.
+*ROC AUC measures how well a model ranks homes by risk: 0.5 is no better than chance and 1.0 is a perfect ranking. Scores are for homes the model did not see during training.*
+
+- **Asset-register data alone gets you a useful ranking.** The core model reaches a ROC AUC of **0.82**.
+- **Survey data adds a lot.** The extended model lifts this to **0.90**, roughly halving the gap to a perfect ranking. This quantifies the value of a stock condition survey.
 - **It transfers to areas the model has never seen.** Training on four areas and testing on the fifth gives **0.76** (core) and **0.87** (extended) across all five areas. These are the realistic figures for a landlord applying the model to new stock.
 - **Gradient boosting beats logistic regression in every comparison** (0.82 vs 0.76 core, 0.90 vs 0.86 extended). Combinations of features matter, which a linear model cannot fully capture.
+
+![Calibration](reports/figures/02_calibration_extended.png)
+
+The predicted probabilities are also **well calibrated**: they track observed rates closely, so a predicted 40% risk really does mean roughly 40 in 100 such homes are below C. That makes the scores usable for planning, not just ranking.
 
 ### What drives the risk?
 
 ![Permutation importance, extended model](reports/figures/03_importance_extended.png)
 
-Wall insulation is the single strongest signal, followed by property type, loft insulation and build year.
+Wall insulation is the single strongest signal, followed by property type, loft insulation and build year. The charts below show the model's predicted risk for each group, with other factors held constant.
 
-| Uninsulated walls | Main fuel | Build year |
+| Wall insulation | Main fuel | Build year |
 |---|---|---|
 | ![Wall insulation](reports/figures/04_pdp_extended_wall_insulation.png) | ![Main fuel](reports/figures/04_pdp_core_fuel_group.png) | ![Build year](reports/figures/04_pdp_core_construction_year.png) |
 
-- **Uninsulated walls:** 64% of homes with uninsulated walls are below C, against 23% with insulated walls. The model puts the risk at 69% vs 26% once other factors are held constant.
-- **Off-gas homes:** homes heated by oil (61%), electricity (53%) or communal systems (51%) have around double the predicted risk of mains gas homes (27%).
-- **Build era:** risk falls steadily from about 50% for pre-1920 homes to almost zero for homes built after 2003.
+- **Uninsulated walls:** 64% of homes with uninsulated walls are below C, against 23% with insulated walls. Once other factors are held constant, the model's predicted risk is 69% against 26%.
+- **Off-gas homes:** homes heated by oil (61%), electricity (53%) or communal systems (51%) have around double the predicted risk of mains gas homes (27%), other factors held constant.
+- **Build era:** predicted risk falls steadily from about 50% for pre-1920 homes to almost zero for homes built after 2003, other factors held constant.
 - **Houses and bungalows** (39% and 42% below C) are far more likely to be below C than flats (22%), which lose less heat through shared walls, floors and ceilings.
 
 **Highest-risk archetypes with at least 150 homes in the test set:**
@@ -52,32 +60,22 @@ The interwar gas-heated house is not the riskiest archetype, but it is by far th
 
 The share of assessed homes below C fell from around 40% in 2015 to 20% in 2024, then rose again after the assessment method changed to **RdSAP 10 on 15 June 2025**. Holding everything else constant, the model estimates that being assessed under RdSAP 10 adds about **3.4 percentage points** to a home's risk of being below C. Comparing ratings across this change without adjusting for it could make a landlord's stock look worse than it is, so the models include the assessment year and an RdSAP 10 flag as controls.
 
-### How well calibrated is it?
-
-![Calibration](reports/figures/02_calibration_extended.png)
-
-Predicted probabilities track observed rates closely, so a predicted 40% risk really does mean roughly 40 in 100 such homes are below C. That makes the scores usable for planning, not just ranking.
+This chart should not be read as a trend for the whole stock. Each quarter shows the homes that happened to be assessed then (mostly homes being re-let), not a consistent picture of all homes, so extending the line forward would be misleading.
 
 Full numbers are in [`reports/summary.md`](reports/summary.md) and [`reports/metrics.json`](reports/metrics.json).
 
 ## What the model is for (and what it isn't)
-
-### Reading the scores
-
-ROC AUC measures how well the model ranks homes by risk: 0.5 is no better than chance and 1.0 is a perfect ranking.
 
 ### How a landlord could use it
 
 - **Find at-risk homes without an up-to-date rating.** Score every home from the asset register, including homes with no EPC or an old one, and survey the highest-risk homes first. The core model is the realistic choice here because it only needs data landlords already hold: it scores 0.82 on held-out homes and 0.76 in areas it has never seen.
 - **Size the problem today.** Because the predicted probabilities are well calibrated, adding them up gives an expected count. If 1,000 unrated homes have an average predicted risk of 35%, roughly 350 of them are likely to be below C. That gives a planning and budgeting figure without surveying every home.
 - **Target retrofit spending.** Wall insulation, loft insulation and off-gas heating are the strongest drivers of risk, which points to the interventions most likely to move homes over the line.
-- **Decide whether a stock condition survey is worth it.** The jump from 0.82 (asset register only) to 0.90 (with survey data) puts a number on how much better a landlord can target work once they have survey data.
+- **Decide whether a stock condition survey is worth it.** The jump from 0.82 (core) to 0.90 (extended) puts a number on how much better a landlord can target work once they have survey data.
 
 ### What it does not do
 
-**It does not forecast how many homes will be below C in 2030.** The model is a snapshot: it estimates how likely a home is to be below C at the time it was assessed, based on its characteristics. It knows nothing about how quickly homes are being improved, so it cannot project the stock forward.
-
-The over-time chart above should not be read as a stock-wide trend either. Each quarter shows the homes that happened to be assessed then (mostly homes being re-let), not a consistent picture of the whole stock, so extending that line to 2030 would be misleading. A forecast needs improvement rates measured on the same homes over time; see the first item in [Ideas for next steps](#ideas-for-next-steps).
+**It does not forecast how many homes will be below C in 2030.** The model is a snapshot: it estimates how likely a home is to be below C at the time it was assessed, based on its characteristics. It knows nothing about how quickly homes are being improved, so it cannot project the stock forward. A forecast needs improvement rates measured on the same homes over time; see the first item in [Ideas for next steps](#ideas-for-next-steps).
 
 ## Data
 
@@ -89,10 +87,10 @@ The over-time chart above should not be read as a stock-wide trend either. Each 
 
 1. Sign in with GOV.UK One Login on the service above and download domestic EPC certificate data.
 2. The downloads are large (over 1GB for a couple of local authorities), so shrink them first:
-```bash
+   ```bash
    python scripts/extract_subset.py path/to/download.csv          # default areas
    python scripts/extract_subset.py path/to/download.zip --areas E08000003 E09000028
-```
+   ```
    This keeps social rented homes since 2015, keeps the latest certificate per home, drops addresses and writes a small `epc_social_subset.csv.gz`.
 3. Put that file (or the raw CSVs) anywhere under `data/raw/` and run the pipeline.
 
