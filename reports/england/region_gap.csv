@@ -1,0 +1,10 @@
+region,homes,actual_below_c,expected_below_c,gap
+North West,79186,0.275,0.321,-0.046
+South West,41622,0.316,0.349,-0.033
+East of England,53407,0.291,0.319,-0.028
+North East,36648,0.341,0.362,-0.021
+South East,69124,0.282,0.302,-0.02
+East Midlands,46332,0.337,0.334,0.003
+Yorkshire and The Humber,60401,0.372,0.348,0.024
+West Midlands,64009,0.358,0.324,0.034
+London,83050,0.371,0.313,0.058

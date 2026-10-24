@@ -2,6 +2,7 @@
 data/raw/*
 data/processed/*
 data/history/
+data/england/
 data/synthetic/
 data/synthetic_history/
 data/synthetic_history.csv.gz

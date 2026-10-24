@@ -19,13 +19,16 @@ import pandas as pd
 from . import config, explain, features, load, model
 
 
-def build_dataset(raw_dir: Path, min_year: int) -> pd.DataFrame:
+def build_dataset(raw_dir: Path, min_year: int, england: bool = False) -> pd.DataFrame:
     print("1. Loading social rented certificates")
     raw = load.load_social_certificates(raw_dir, min_year=min_year)
     print(f"   {len(raw):,} certificates loaded")
+    if england:
+        raw = features.england_only(raw)
     latest = features.keep_latest_certificate(raw)
+    del raw
     print(f"   {len(latest):,} homes after keeping the latest certificate per home")
-    table = features.build_features(latest)
+    table = features.add_region(features.build_features_chunked(latest))
     print(f"   {len(table):,} homes with a valid rating; {table['below_c'].mean():.1%} below C")
     return table
 
@@ -73,9 +76,10 @@ def write_summary(path: Path, table: pd.DataFrame, metrics: dict, cv: dict, top_
     for _, r in archetypes.head(10).iterrows():
         lines.append(f"| {r['property_type']} | {r['build_era']} | {r['fuel_group']} | {r['homes']:,} | "
                      f"{r['actual_below_c']:.0%} | {r['predicted_risk']:.0%} |")
-    lines += ["", "Figures are in `reports/figures/`. Archetype and area tables are in `reports/`.", ""]
+    where = path.parent.relative_to(config.PROJECT_ROOT) if path.parent.is_relative_to(config.PROJECT_ROOT) else path.parent
+    lines += ["", f"Figures are in `{where.as_posix()}/figures/`. Archetype and area tables are in `{where.as_posix()}/`.", ""]
     path.write_text("\n".join(lines), encoding="utf-8")
-    print(f"  saved {path.relative_to(config.PROJECT_ROOT)}")
+    print(f"  saved {path.relative_to(config.PROJECT_ROOT) if path.is_relative_to(config.PROJECT_ROOT) else path}")
 
 
 def main(argv=None):
@@ -87,14 +91,20 @@ def main(argv=None):
     p.add_argument("--no-cv", action="store_true", help="skip leave-areas-out validation")
     p.add_argument("--theme", choices=["dark", "light"], default="dark",
                    help="chart colour scheme (dark matches GitHub's dark mode)")
+    p.add_argument("--england-only", action="store_true", help="drop Welsh local authorities")
+    p.add_argument("--reports", type=Path, default=None,
+                   help="write reports and figures here instead of reports/ (e.g. reports/england)")
     args = p.parse_args(argv)
+    if args.reports:
+        config.REPORTS_DIR = args.reports.resolve()
+        config.FIGURES_DIR = config.REPORTS_DIR / "figures"
     start = time.time()
     explain.set_theme(args.theme)
 
     for d in (config.PROCESSED_DIR, config.FIGURES_DIR, config.MODELS_DIR):
         d.mkdir(parents=True, exist_ok=True)
 
-    table = build_dataset(args.raw, args.min_year)
+    table = build_dataset(args.raw, args.min_year, args.england_only)
     if args.sample and args.sample < len(table):
         table = table.sample(args.sample, random_state=config.RANDOM_STATE).reset_index(drop=True)
         print(f"   subsampled to {len(table):,} homes")
@@ -112,7 +122,12 @@ def main(argv=None):
         joblib.dump({"encoder": runs[fs].encoder, "model": runs[fs].booster},
                     config.MODELS_DIR / f"booster_{fs}.joblib")
         if not args.no_cv:
-            cv[fs] = model.leave_areas_out_cv(table, fs)
+            regions = table["region"].astype("string").dropna().unique() if "region" in table else []
+            regions = [r for r in regions if r != "Unknown"]
+            if len(regions) >= 3:  # national data: hold out one whole region at a time
+                cv[fs] = model.leave_areas_out_cv(table, fs, n_splits=len(regions), group_col="region")
+            else:
+                cv[fs] = model.leave_areas_out_cv(table, fs)
 
     print("3. Explaining")
     fig = config.FIGURES_DIR
@@ -151,9 +166,16 @@ def main(argv=None):
             for f in sh["feature"].head(4):
                 explain.plot_shap_dependence(run, values, X, f, fig / f"06_shap_{f}.png")
 
-    archetypes = explain.archetype_table(runs["core"])
+    # at least 30 test homes, or 0.1% of them for national-scale data, so tiny groups don't top the list
+    archetypes = explain.archetype_table(runs["core"], min_homes=max(30, len(runs["core"].y_test) // 1000))
     archetypes.to_csv(config.REPORTS_DIR / "archetype_risk.csv", index=False)
     explain.local_authority_table(runs["core"]).to_csv(config.REPORTS_DIR / "local_authority_gap.csv", index=False)
+    if "region" in table and table["region"].nunique() > 1:
+        regions = explain.local_authority_table(runs["core"], by="region")
+        regions = regions[regions["region"].astype(str) != "Unknown"]
+        regions.to_csv(config.REPORTS_DIR / "region_gap.csv", index=False)
+        explain.plot_area_gap(regions, "region", fig / "10_region_gap.png",
+                              "Share below C by region, against the stock mix")
 
     with open(config.REPORTS_DIR / "metrics.json", "w", encoding="utf-8") as fh:
         json.dump({"metrics": metrics, "leave_areas_out_cv": cv, "n_homes": len(table)}, fh, indent=2)

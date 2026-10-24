@@ -37,6 +37,7 @@ REQUIRED = [
     "local_authority",
 ]
 OPTIONAL = [
+    "home_id",  # anonymous id written by scripts/extract_subset.py --history
     "lmk_key",
     "uprn",
     "postcode",

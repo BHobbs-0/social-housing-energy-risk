@@ -77,6 +77,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, SplineTransformer
 
 from . import columns, config, explain, features
+from .load import compact, concat_compact
 
 TARGET_DATE = pd.Timestamp("2030-04-01")
 RDSAP10 = pd.Timestamp(config.RDSAP10_START)
@@ -94,6 +95,12 @@ WORKS_PATTERN = r"eco|green deal|grant|rhi|renewable heat|feed.?in|fit applicati
 
 CATEGORICAL = ["property_type", "build_era", "fuel_group", "local_authority"]
 NA_VALUES = ["", "NO DATA!", "INVALID!", "N/A", "NODATA!", "nan"]
+HISTORY_COLUMNS = {  # what the forecast reads from a --history extract
+    "home_id", "current_energy_rating", "current_energy_efficiency", "transaction_type", "lodgement_date",
+    "property_type", "built_form", "construction_age_band", "total_floor_area", "main_fuel", "mains_gas_flag",
+    "walls_description", "roof_description", "mainheat_description", "multi_glaze_proportion",
+    "local_authority", "local_authority_label",
+}
 
 
 # ---------------------------------------------------------------------------
@@ -103,15 +110,27 @@ def load_history(path: Path) -> pd.DataFrame:
     """Every certificate per home, cleaned with the same feature code as the classifier."""
     path = Path(path)
     files = sorted(p for p in path.rglob("*.csv*")) if path.is_dir() else [path]
-    raw = pd.concat([pd.read_csv(f, dtype=str, keep_default_na=False, na_values=NA_VALUES) for f in files],
-                    ignore_index=True)
-    raw = raw.rename(columns=columns.build_rename_map(list(raw.columns)))
-    if "home_id" not in raw:
-        raise KeyError("No home_id column. Create the file with scripts/extract_subset.py --history.")
-    rating = raw["current_energy_rating"].astype("string").str.strip().str.upper()
-    raw = raw.loc[rating.isin(config.VALID_RATINGS)].reset_index(drop=True)
+    parts = []
+    for f in files:
+        header = pd.read_csv(f, nrows=0).columns
+        rename = columns.build_rename_map(list(header))
+        if "home_id" not in rename.values():
+            raise KeyError(f"{f} has no home_id column. Create it with scripts/extract_subset.py --history.")
+        use = [c for c in header if rename[c] in HISTORY_COLUMNS]
+        for chunk in pd.read_csv(f, dtype=str, keep_default_na=False, na_values=NA_VALUES, usecols=use,
+                                 chunksize=500_000):
+            parts.append(_certificates_from(chunk.rename(columns=rename)))
+    certs = concat_compact(parts)
+    certs = (certs.dropna(subset=["date", "sap"]).sort_values(["home_id", "date"])
+             .drop_duplicates(["home_id", "date"], keep="last").reset_index(drop=True))
+    return features.add_region(certs)
 
-    certs = features.build_features(raw)  # same parsing as the classifier, row order preserved
+
+def _certificates_from(raw: pd.DataFrame) -> pd.DataFrame:
+    """Clean one chunk of a --history extract with the same feature code as the classifier."""
+    rating = raw["current_energy_rating"].astype("string").str.strip().str.upper()
+    raw = raw.loc[rating.isin(config.VALID_RATINGS).to_numpy()].reset_index(drop=True)
+    certs = features.build_features(raw)  # row order preserved
     certs["home_id"] = raw["home_id"].to_numpy()
     certs["sap"] = pd.to_numeric(raw.get("current_energy_efficiency"), errors="coerce").to_numpy()
     trans = raw["transaction_type"] if "transaction_type" in raw else pd.Series(pd.NA, index=raw.index)
@@ -121,9 +140,7 @@ def load_history(path: Path) -> pd.DataFrame:
     certs["build_era"] = features.age_band_label(certs["construction_year"])
     for c in CATEGORICAL:
         certs[c] = certs[c].fillna("unknown").astype(str)
-    certs = (certs.dropna(subset=["date", "sap"]).sort_values(["home_id", "date"])
-             .drop_duplicates(["home_id", "date"], keep="last").reset_index(drop=True))
-    return certs
+    return compact(certs.drop(columns=["lodgement_date"]))
 
 
 def latest_per_home(certs: pd.DataFrame) -> pd.DataFrame:
@@ -332,7 +349,7 @@ def near_line_by_period(pairs: pd.DataFrame, min_pairs: int = 100) -> pd.DataFra
 # Tables
 # ---------------------------------------------------------------------------
 def breakdown(homes: pd.DataFrame, by: list[str], min_homes: int) -> pd.DataFrame:
-    grp = (homes.groupby(by, dropna=False)
+    grp = (homes.groupby(by, dropna=False, observed=True)
            .agg(homes=("below_c", "size"), below_c_latest_certificate=("below_c", "sum"),
                 expected_below_c_today=("p_today", "sum"),
                 expected_below_c_2030_conditions_as_now=("p_flat", "sum"),
@@ -363,6 +380,28 @@ def plot_near_line(table: pd.DataFrame, path: Path):
     explain._style(ax, f"Homes rated just below C (SAP {lo}-{hi}): still below C at the next certificate",
                    xlabel="Year the next certificate was lodged", ylabel="Still below C")
     ax.grid(axis="y", color=explain.GRID, linewidth=0.8)
+    explain._save(fig, path)
+
+
+def plot_by_region(table: pd.DataFrame, path: Path):
+    """Estimated share below C today (bars) and in 2030 if the recent trend continues (markers)."""
+    t = table.sort_values("share_today")
+    fig, ax = plt.subplots(figsize=(7, 0.42 * len(t) + 1.4))
+    y = np.arange(len(t))
+    ax.barh(y, t["share_today"], color=explain.BLUE, height=0.62, label="Estimated today")
+    ax.scatter(t["share_2030_trend_continues"], y, color=explain.ORANGE, zorder=3, s=36,
+               label="2030, recent trend continues")
+    for yi, v, e in zip(y, t["share_today"], t["share_2030_trend_continues"]):
+        ax.text(max(v, e) + 0.008, yi, f"{v:.0%}", va="center", fontsize=9, color=explain.INK)
+    ax.set_yticks(y, t["region"].astype(str))
+    ax.xaxis.set_major_formatter(matplotlib.ticker.PercentFormatter(1.0, decimals=0))
+    ax.set_xlim(0, t["share_today"].max() * 1.25)
+    explain._style(ax, "Social homes likely to be below C, by region", xlabel="Below C")
+    ax.set_title(ax.get_title(loc="left"), loc="left", fontsize=12, color=explain.INK, pad=30)
+    handles, labels = ax.get_legend_handles_labels()
+    order = [labels.index(lbl) for lbl in sorted(labels, key=lambda lbl: lbl.startswith("2030") or lbl.startswith("Expected"))]
+    ax.legend([handles[i] for i in order], [labels[i] for i in order], frameon=False, fontsize=9, ncol=2,
+              labelcolor=explain.INK, loc="lower left", bbox_to_anchor=(-0.01, 1.0), borderaxespad=0.2, handlelength=1.2)
     explain._save(fig, path)
 
 
@@ -455,10 +494,13 @@ def write_summary(path: Path, r: dict):
     print(f"  saved {path}")
 
 
-def run(history: Path, reports: Path, figures: Path, today: pd.Timestamp, draws: int) -> dict:
+def run(history: Path, reports: Path, figures: Path, today: pd.Timestamp, draws: int,
+        england: bool = False) -> dict:
     t0 = time.time()
     print("1. Loading certificate history")
     certs = load_history(history)
+    if england:
+        certs = features.england_only(certs)
     homes = latest_per_home(certs)
     pairs = make_pairs(certs)
     print(f"   {len(certs):,} certificates, {len(homes):,} homes, {len(pairs):,} consecutive pairs")
@@ -516,6 +558,11 @@ def run(history: Path, reports: Path, figures: Path, today: pd.Timestamp, draws:
         reports / "forecast_by_archetype.csv", index=False)
     area = "local_authority_label" if "local_authority_label" in homes else "local_authority"
     breakdown(homes, [area], 50).to_csv(reports / "forecast_by_area.csv", index=False)
+    if "region" in homes and homes["region"].nunique() > 1:
+        by_region = breakdown(homes, ["region"], 50)
+        by_region = by_region[by_region["region"].astype(str) != "Unknown"]
+        by_region.to_csv(reports / "forecast_by_region.csv", index=False)
+        plot_by_region(by_region, figures / "11_forecast_by_region.png")
     write_summary(reports / "forecast_summary.md", results)
     if len(near):
         plot_near_line(near, figures / "07_near_line_by_year.png")
@@ -534,10 +581,11 @@ def main(argv=None):
     p.add_argument("--bootstrap", type=int, default=BOOTSTRAP_DRAWS, help="refits for intervals (0 to skip)")
     p.add_argument("--reports", type=Path, default=config.REPORTS_DIR)
     p.add_argument("--theme", choices=["dark", "light"], default="dark")
+    p.add_argument("--england-only", action="store_true", help="drop Welsh local authorities")
     args = p.parse_args(argv)
     explain.set_theme(args.theme)
     today = pd.Timestamp(args.today) if args.today else pd.Timestamp.today().normalize()
-    run(args.history, args.reports, args.reports / "figures", today, args.bootstrap)
+    run(args.history, args.reports, args.reports / "figures", today, args.bootstrap, args.england_only)
 
 
 if __name__ == "__main__":

@@ -101,3 +101,28 @@ def test_rdsap10_flag():
         "local_authority": ["E1"] * 2,
     })
     assert features.build_features(df)["rdsap10"].tolist() == [0.0, 1.0]
+
+
+def test_compact_concat_keeps_values_and_categories():
+    from housing_epc import load
+    a = load.compact(pd.DataFrame({"home_id": ["x", "y"], "property_type": ["Flat", "House"]}))
+    b = load.compact(pd.DataFrame({"home_id": ["z"], "property_type": ["Bungalow"]}))
+    out = load.concat_compact([a, b])
+    assert isinstance(out["property_type"].dtype, pd.CategoricalDtype)
+    assert out["property_type"].astype(str).tolist() == ["Flat", "House", "Bungalow"]
+    assert out["home_id"].tolist() == ["x", "y", "z"]
+
+
+def test_latest_certificate_uses_home_id_when_present():
+    df = pd.DataFrame({"home_id": ["a", "a", "b"], "uprn": ["1", "2", "1"],
+                       "lodgement_date": ["2016-01-01", "2020-01-01", "2018-01-01"]})
+    out = features.keep_latest_certificate(df)
+    assert sorted(out["lodgement_date"]) == ["2018-01-01", "2020-01-01"]
+
+
+def test_add_region_from_lookup(tmp_path):
+    path = tmp_path / "lu.csv"
+    path.write_text("﻿LAD24CD,LAD24NM,RGN24CD,RGN24NM\nE09000028,Southwark,E12000007,London\n", encoding="utf-8")
+    lookup = features.load_region_lookup(path)
+    df = features.add_region(pd.DataFrame({"local_authority": ["E09000028", "E99999999"]}), lookup)
+    assert df["region"].astype(str).tolist() == ["London", "Unknown"]

@@ -1,4 +1,4 @@
-# Which social homes will miss EPC C? Predicting and explaining energy efficiency risk in England's social housing
+# Which social homes will miss EPC C? Predicting, explaining and forecasting energy efficiency risk in England's social housing
 
 Social rented homes in England must reach **EPC band C by 1 April 2030**. Landlords need to know which homes are most at risk, but many do not hold up-to-date survey data for every property.
 
@@ -8,7 +8,16 @@ This project uses **136,379 Energy Performance Certificates for social rented ho
 2. **Explanation:** what actually drives the risk, and how much better do we do when we also know about walls, roofs, insulation and heating? This is the **extended** model.
 3. **Forecast:** using homes that have been assessed more than once, how many are likely to be below C today, and on 1 April 2030? See [Forecasting the position in 2030](#forecasting-the-position-in-2030).
 
-## Headline results
+All three are then repeated for **3 million social homes across England**, with results by region: see [Scaling up to all of England](#scaling-up-to-all-of-england).
+
+## At a glance
+
+- **Prediction:** asset-register data alone ranks homes by risk with a ROC AUC of **0.82** (0.80 across England, where 1.0 is a perfect ranking). Adding stock survey data lifts this to **0.90**.
+- **Explanation:** uninsulated walls, off-gas heating, older homes and houses rather than flats drive the risk. Wall insulation is the strongest single signal.
+- **Today:** scored as if reassessed now, about **one in five** social homes is likely to be below C, not the one in three their latest certificates suggest. Across England that is about **600,000 homes**.
+- **2030:** on current evidence the deadline will be missed. Even if the recent improvement trend continues, around **10% of England's social homes (about 310,000)** would still be below C in April 2030.
+
+## Predicting and explaining the risk (five areas)
 
 **31% of the social homes in the data (42,646) were rated below band C on their latest certificate (lodged between 2015 and 2026).**
 
@@ -67,7 +76,7 @@ Full numbers are in [`reports/summary.md`](reports/summary.md) and [`reports/met
 
 ## Forecasting the position in 2030
 
-The models above are a snapshot. To look forward, the forecast uses homes that have been assessed more than once: **208,473 certificates for 156,256 homes**, of which 41,521 have two or more, giving 37,613 usable pairs of consecutive certificates on the same home.
+The models above are a snapshot. To look forward, the forecast uses homes that have been assessed more than once. It goes back further than the classifier, to certificates lodged from 2012, so it covers more homes in the same five areas: **208,473 certificates for 156,256 homes**, of which 41,521 have two or more, giving 37,613 usable pairs of consecutive certificates on the same home.
 
 ### What repeat certificates show
 
@@ -88,7 +97,7 @@ The models above are a snapshot. To look forward, the forecast uses homes that h
 | 1 April 2030, conditions as now | 37,547 | 24.0% (23.3% to 24.6%) |
 | 1 April 2030, recent trend continues | 19,176 | 12.3% (11.4% to 12.9%) |
 
-*Ranges are 90% intervals from refitting the model on resampled homes. They cover uncertainty in the fit, not in which scenario holds.*
+*Ranges are 90% intervals from refitting the model on resampled homes. They cover uncertainty in the fit, not in which scenario holds. The latest-certificate share (33%) is a little above the 31% earlier because it also counts homes whose latest certificate is from 2012 to 2014.*
 
 - **Latest certificates overstate the problem.** Many are a decade old. Scored as if reassessed today, about one in five homes is likely to be below C, not one in three.
 - **On current evidence, the deadline will be missed.** Clearing every below-C home by April 2030 means about **9,800 fewer below-C homes a year**. Even if the recent improvement trend continues, the fall is about **4,200 a year**, leaving around 12% of homes below C.
@@ -115,7 +124,7 @@ A first version assumed homes improve steadily over time (a two-state Markov cha
 
 ![Forecast calibration](reports/figures/09_forecast_calibration.png)
 
-**Checks.** On recent reassessments of homes the model never saw, it predicts 25.8% below C against 25.7% observed, and its Brier score is 0.168 against 0.366 for assuming each home keeps its band. Fitted only on data to 2022, it would have predicted 29.6% below C for 2023 to mid-2025 against 23.9% observed: it could not have seen the 2023 shift coming, which is why 2030 is shown as scenarios rather than one number.
+**Checks.** On recent reassessments of homes the model never saw, it predicts 25.8% below C against 25.7% observed. Its Brier score (the average squared error of its probabilities, lower is better) is 0.168, against 0.366 for assuming each home keeps its band. Fitted only on data to 2022, it would have predicted 29.6% below C for 2023 to mid-2025 against 23.9% observed: it could not have seen the 2023 shift coming, which is why 2030 is shown as scenarios rather than one number.
 
 ### Caveats
 
@@ -124,14 +133,59 @@ A first version assumed homes improve steadily over time (a two-state Markov cha
 - **The trend scenario is an extrapolation.** Nothing in the data says the 2019 to 2025 pace will hold.
 - **Compliance is not just the current rating.** Under the [confirmed policy](https://www.elmhurstenergy.co.uk/blog/2026/02/03/social-rented-homes-to-reach-epc-c-by-1st-april-2030/), homes can comply through new fabric, heating or smart-readiness metrics, and a £10,000 spend cap allows deferral. This forecast is about the current EPC rating only.
 
+## Scaling up to all of England
+
+The same code runs on the full national download: **4.1 million certificates for 3.0 million social rented homes** across all 296 English local authorities. Welsh authorities are in the download but left out, because Wales sets its own standard for social housing. Results are in [`reports/england/`](reports/england/).
+
+### The model holds up nationally
+
+| ROC AUC | Five areas | England |
+|---|---|---|
+| Core model, held-out homes | 0.82 | 0.80 |
+| Extended model, held-out homes | 0.90 | 0.90 |
+| Core model, area never seen in training | 0.76 | 0.79 (0.77 to 0.81) |
+| Extended model, area never seen in training | 0.87 | 0.89 (0.85 to 0.91) |
+
+*Nationally, "area never seen" means training on eight regions and testing on the ninth; the range is across the nine regions. For the five areas it means leaving out one local authority at a time.*
+
+The core model loses a little accuracy on a far more varied stock; the extended model does not. Training on eight regions and testing on the ninth works for every region, so a landlord anywhere in England could use it. The drivers are the same: wall insulation, property type, loft insulation and build year.
+
+Nationally, the riskiest archetypes are off-gas homes: oil-heated houses built between 1919 and 1964 (86% to 92% below C) and electrically heated homes of most ages ([table](reports/england/archetype_risk.csv)). By number, the interwar gas-heated house is still the biggest problem, with about 84,000 likely to be below C today.
+
+### Regions
+
+![Share below C by region](reports/england/figures/10_region_gap.png)
+
+Comparing each region's share below C with what its housing stock alone would predict shows where homes do better or worse than their age, type and fuel suggest. **London's social homes are more likely to be below C than its stock mix predicts (37% against 31%)**, as are the West Midlands and Yorkshire and The Humber. The North West does best against expectation (28% against 32%). These shares are from each home's latest certificate in the held-out test set, so, like any latest-certificate figure here, they overstate the position today.
+
+### The 2030 forecast for England
+
+![Forecast by region](reports/england/figures/11_forecast_by_region.png)
+
+| Position | Expected homes below C | Share |
+|---|---|---|
+| Latest certificates, taken at face value | 1,028,056 | 33.9% |
+| Estimated today (October 2026) | 607,325 | 20.0% (20.0% to 20.2%) |
+| 1 April 2030, conditions as now | 670,500 | 22.1% (22.0% to 22.3%) |
+| 1 April 2030, recent trend continues | 310,393 | 10.2% (10.1% to 10.5%) |
+
+- **About 600,000 English social homes are likely to be below C today**, around one in five. Yorkshire and The Humber (26%) and London (23%) have the highest shares; the North West and South East (17%) the lowest.
+- **The national pace falls short too.** Clearing every below-C home by April 2030 needs about **177,000 fewer a year**; the recent trend gives about **86,000**, half the pace needed, leaving around 310,000 homes below C.
+- **It is consistent with the national survey.** The English Housing Survey found 26% of social rented homes below C in 2024, falling about 2 points a year, which would put 2026 at roughly 22%. This estimate of 20% is slightly lower, in line with the caveat above that recent reassessments may flatter the stock.
+- **The model checks out at scale.** On 457,000 recent reassessments of homes it had not seen, it predicts 27.5% below C against 27.5% observed.
+- **Coverage:** homes without a certificate lodged since 2012 are not included.
+
+The 2023 shift is even clearer nationally: for homes just below C, the share still below C at the next certificate was between about 50% and 70% every year to 2022, then fell to 32% in 2024 ([chart](reports/england/figures/07_near_line_by_year.png)).
+
 ## What the model is for (and what it isn't)
 
 ### How a landlord could use it
 
-- **Find at-risk homes without an up-to-date rating.** Score every home from the asset register, including homes with no EPC or an old one, and survey the highest-risk homes first. The core model is the realistic choice here because it only needs data landlords already hold: it scores 0.82 on held-out homes and 0.76 in areas it has never seen.
+- **Find at-risk homes without an up-to-date rating.** Score every home from the asset register, including homes with no EPC or an old one, and survey the highest-risk homes first. The core model is the realistic choice here because it only needs data landlords already hold: it scores 0.82 on held-out homes and 0.76 in areas it has never seen (0.80 and 0.79 across England).
 - **Size the problem today.** Because the predicted probabilities are well calibrated, adding them up gives an expected count. If 1,000 unrated homes have an average predicted risk of 35%, roughly 350 of them are likely to be below C. That gives a planning and budgeting figure without surveying every home.
 - **Target retrofit spending.** Wall insulation, loft insulation and off-gas heating are the strongest drivers of risk, which points to the interventions most likely to move homes over the line.
 - **Decide whether a stock condition survey is worth it.** The jump from 0.82 (core) to 0.90 (extended) puts a number on how much better a landlord can target work once they have survey data.
+- **Plan the programme to 2030.** The forecast gives an expected number of homes below C today and in April 2030 for each area and archetype, under "conditions as now" and "recent trend continues", which brackets the size of the job.
 
 ### What it does not do
 
@@ -141,14 +195,14 @@ A first version assumed homes improve steadily over time (a two-state Markov cha
 
 **Source:** [Get energy performance of buildings data](https://get-energy-performance-data.communities.gov.uk/) (MHCLG). This GOV.UK service replaced the old Open Data Communities EPC portal in 2026.
 
-**Areas used:** Manchester (46,296 homes), Sheffield (38,913), Cornwall (19,863), Newcastle upon Tyne (17,800) and Southwark (13,507). Together they mix large northern cities, an inner London borough and a rural, largely off-gas county. Certificates lodged from January 2015 to September 2026, latest certificate per home.
+**Areas used:** Manchester (46,296 homes), Sheffield (38,913), Cornwall (19,863), Newcastle upon Tyne (17,800) and Southwark (13,507). Together they mix large northern cities, an inner London borough and a rural, largely off-gas county. The classifier uses certificates lodged from January 2015 to September 2026, latest certificate per home; the forecast also uses earlier certificates, back to 2012. The England results cover all 296 English local authorities.
 
 **Reproducing it**
 
 1. Sign in with GOV.UK One Login on the service above and download domestic EPC certificate data.
 2. The downloads are large (over 1GB for a couple of local authorities), so shrink them first:
    ```bash
-   python scripts/extract_subset.py path/to/download.csv          # default areas
+   python scripts/extract_subset.py path/to/download.csv          # eight large areas by default (DEFAULT_AREAS)
    python scripts/extract_subset.py path/to/download.zip --areas E08000003 E09000028
    ```
    This keeps social rented homes since 2015, keeps the latest certificate per home, drops addresses and writes a small `epc_social_subset.csv.gz`.
@@ -157,7 +211,12 @@ A first version assumed homes improve steadily over time (a two-state Markov cha
    ```bash
    python scripts/extract_subset.py path/to/download.csv --history --areas E08000003 E08000039 E06000052 E08000021 E09000028
    ```
-   Sheffield's code is E08000039 in current downloads (it was E08000019 before a 2019 boundary change).
+   Current EPC downloads use E08000039 for Sheffield (ONS lookups use E08000019).
+5. For England, run it on the national download (an 8GB zip) with `--all-areas`. In history mode it writes as it reads, so it needs little memory, and the output (about 190MB) feeds both the classifier and the forecast:
+   ```bash
+   python scripts/extract_subset.py all-domestic-csv.zip --history --all-areas --out epc_social_history_england.csv.gz
+   ```
+   For results by region, save the ONS [Local Authority District to Region lookup](https://www.data.gov.uk/dataset/3fbe9109-f329-4c4a-85cb-3b78ea4fbce3/local-authority-district-to-region-december-2024-lookup-in-en) as `data/lookups/lad_to_region.csv` (a copy is included; Open Government Licence).
 
 Raw data is git-ignored and never committed. Check the service's licensing guidance before redistributing any derived data.
 
@@ -168,11 +227,11 @@ Raw data is git-ignored and never committed. Check the service's licensing guida
 | Step | What happens | Where |
 |---|---|---|
 | Load | Stream CSVs in chunks, keep social rented tenure and certificates lodged since 2015 | `load.py` |
-| Deduplicate | Keep the latest certificate per home (UPRN, falling back to address and postcode) | `features.py` |
+| Deduplicate | Keep the latest certificate per home (the anonymous `home_id` of a `--history` extract, or UPRN, falling back to address and postcode) | `features.py` |
 | Features | Parse age bands, fuel, wall type and insulation, roof and loft depth, heating system, glazing | `features.py` |
 | Target | `below_c` = current rating D, E, F or G | `config.py` |
 | Models | Logistic regression baseline and histogram gradient boosting, on **core** and **extended** feature sets | `model.py` |
-| Validation | Stratified 80/20 held-out test set, plus leave-one-local-authority-out cross-validation | `model.py` |
+| Validation | Stratified 80/20 held-out test set, plus leave-one-local-authority-out cross-validation (leave-one-region-out for England) | `model.py` |
 | Explanation | Permutation importance, partial dependence, SHAP values (optional), archetype and area tables | `explain.py` |
 | Forecast | Pairs of consecutive certificates per home, logistic regression with period effects, scenarios to April 2030 | `forecast.py` |
 
@@ -202,6 +261,10 @@ python -m housing_epc.pipeline --sample 200000    # random subsample for very la
 python -m housing_epc.pipeline --theme light      # light charts instead of the default dark
 python -m housing_epc.forecast --history data/history   # 2030 forecast from a --history extract
 pytest                                            # unit tests
+
+# England: put the national --history extract in data/england (about 45 minutes and 4GB of memory in total)
+python -m housing_epc.pipeline --raw data/england --england-only --no-shap --reports reports/england
+python -m housing_epc.forecast --history data/england --england-only --bootstrap 10 --reports reports/england
 ```
 
 Charts default to a dark theme that matches GitHub's dark mode.
@@ -235,6 +298,7 @@ python -m housing_epc.forecast --history data/synthetic_history.csv.gz --reports
 | `reports/forecast_2030.json` | All forecast numbers, including backtests |
 | `reports/forecast_by_area.csv`, `forecast_by_archetype.csv` | Expected homes below C today and in 2030 |
 | `reports/figures/07_*`, `08_*`, `09_*` | Repeat certificates by year, forecast scenarios, forecast calibration |
+| `reports/england/` | All of the above for England, plus `region_gap.csv`, `forecast_by_region.csv` and charts `10_*` and `11_*` by region |
 
 ## Project structure
 
@@ -242,10 +306,13 @@ python -m housing_epc.forecast --history data/synthetic_history.csv.gz --reports
 ├── data/
 │   ├── raw/                    # EPC downloads go here (git-ignored)
 │   ├── history/                # --history extracts for the forecast (git-ignored)
+│   ├── england/                # national --history extract (git-ignored)
+│   ├── lookups/                # ONS local authority to region lookup
 │   └── processed/              # cleaned modelling table (git-ignored)
 ├── notebooks/
 │   └── 01_explore.ipynb        # exploratory analysis of the cleaned table
-├── reports/                    # metrics, tables and figures
+├── reports/                    # metrics, tables and figures (five areas)
+│   └── england/                # the same for all of England, plus regions
 ├── scripts/
 │   ├── extract_subset.py       # shrink large downloads to an address-free subset
 │   └── make_synthetic_data.py  # synthetic data for testing
@@ -263,7 +330,7 @@ python -m housing_epc.forecast --history data/synthetic_history.csv.gz --reports
 
 ## Limitations
 
-- **Five areas, not all of England:** results describe these five local authorities. They span very different stock, and the leave-one-area-out results suggest the model transfers reasonably, but national figures would need the full dataset.
+- **Five areas, then England:** the detailed results describe five local authorities; the [England results](#scaling-up-to-all-of-england) confirm the model holds up nationally and across regions.
 - **Coverage:** only homes with a certificate are included. Most social homes have one because an EPC is needed to let a property, but recently let or recently surveyed homes may be over-represented.
 - **Certificates age:** a certificate describes the home when it was assessed. Improvements made since then are not captured.
 - **"Assumed" values:** where an assessor cannot see insulation, RdSAP assumes it from the build era. Some wall and roof insulation values are therefore defaults rather than observations.
@@ -272,7 +339,6 @@ python -m housing_epc.forecast --history data/synthetic_history.csv.gz --reports
 ## Ideas for next steps
 
 - Add a "planned retrofit programme" scenario to the forecast, for example a landlord's own works list scored home by home.
-- Scale up to the full national dataset and compare regions.
 - Join deprivation data (Index of Multiple Deprivation via postcode to LSOA): are the highest-risk homes concentrated in the most deprived areas?
 - Use the recommendations file to estimate the cost of bringing each archetype up to band C.
 - Predict the SAP score directly (regression) to rank homes by how far they are from C.

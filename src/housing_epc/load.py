@@ -10,6 +10,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pandas as pd
+from pandas.api.types import union_categoricals
 
 from . import columns, config
 
@@ -55,11 +56,45 @@ def _read_one(path: Path, chunksize: int, min_year: int) -> pd.DataFrame:
         dates = pd.to_datetime(chunk["lodgement_date"], errors="coerce")
         chunk = chunk.loc[dates.dt.year >= min_year]
         if len(chunk):
-            kept.append(chunk)
+            kept.append(compact(chunk))
 
     if not kept:
         return pd.DataFrame(columns=[c for c in canonical if c in wanted])
-    return pd.concat(kept, ignore_index=True)
+    return concat_compact(kept)
+
+
+# Identifiers stay as text; every other column repeats a small set of values, so it is
+# stored as a category, which needs about an eighth of the memory at national scale.
+TEXT_ID_COLUMNS = {"home_id", "lmk_key", "uprn", "address1", "postcode"}
+
+
+def compact(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy()
+    for c in df.columns:
+        dtype = df[c].dtype
+        is_text = dtype == object or (pd.api.types.is_string_dtype(dtype) and not isinstance(dtype, pd.CategoricalDtype))
+        if c not in TEXT_ID_COLUMNS and is_text:
+            df[c] = df[c].astype("category")
+    return df
+
+
+def concat_compact(frames: list[pd.DataFrame]) -> pd.DataFrame:
+    """Concatenate frames from `compact`, merging category sets so columns stay categorical."""
+    frames = [f for f in frames if len(f)]
+    if not frames:
+        return pd.DataFrame()
+    cols = list(dict.fromkeys(c for f in frames for c in f.columns))
+    out = {}
+    for c in cols:
+        parts = [f[c] if c in f else pd.Series(pd.NA, index=f.index, dtype="object") for f in frames]
+        if all(isinstance(p.dtype, pd.CategoricalDtype) for p in parts):
+            out[c] = union_categoricals(parts, ignore_order=True)
+        else:
+            out[c] = pd.concat([p.astype(object) if isinstance(p.dtype, pd.CategoricalDtype) else p
+                                for p in parts], ignore_index=True)
+    n = sum(len(f) for f in frames)
+    return pd.DataFrame({c: (pd.Series(v) if not isinstance(v, pd.Series) else v.reset_index(drop=True))
+                         for c, v in out.items()}, index=pd.RangeIndex(n))
 
 
 def load_social_certificates(
@@ -79,4 +114,4 @@ def load_social_certificates(
         df = _read_one(path, chunksize=chunksize, min_year=min_year)
         print(f"  {path.name}: {len(df):,} social rented certificates since {min_year}")
         frames.append(df)
-    return pd.concat(frames, ignore_index=True)
+    return concat_compact(frames)

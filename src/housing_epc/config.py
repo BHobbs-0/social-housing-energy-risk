@@ -8,6 +8,9 @@ PROCESSED_DIR = PROJECT_ROOT / "data" / "processed"
 REPORTS_DIR = PROJECT_ROOT / "reports"
 FIGURES_DIR = REPORTS_DIR / "figures"
 MODELS_DIR = PROJECT_ROOT / "models"
+# ONS "Local Authority District to Region" lookup (Open Government Licence). Optional:
+# when present, results are also reported by region.
+REGION_LOOKUP = PROJECT_ROOT / "data" / "lookups" / "lad_to_region.csv"
 
 RANDOM_STATE = 42
 

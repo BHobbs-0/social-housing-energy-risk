@@ -1,0 +1,161 @@
+{
+  "metrics": {
+    "core": {
+      "features": [
+        "property_type",
+        "built_form",
+        "fuel_group",
+        "construction_year",
+        "total_floor_area",
+        "mains_gas",
+        "lodgement_year",
+        "rdsap10"
+      ],
+      "logistic_regression": {
+        "roc_auc": 0.7719858327712517,
+        "pr_auc": 0.6060490653272413,
+        "brier": 0.17680352135696817,
+        "accuracy": 0.728576808004811,
+        "base_rate": 0.32650966036505746,
+        "n": 533779
+      },
+      "gradient_boosting": {
+        "roc_auc": 0.7975723058714037,
+        "pr_auc": 0.6552222359044793,
+        "brier": 0.16641826851440403,
+        "accuracy": 0.7446583698496944,
+        "base_rate": 0.32650966036505746,
+        "n": 533779
+      },
+      "boosting_iterations": 600
+    },
+    "extended": {
+      "features": [
+        "property_type",
+        "built_form",
+        "fuel_group",
+        "wall_type",
+        "wall_insulation",
+        "roof_type",
+        "heating_system",
+        "construction_year",
+        "total_floor_area",
+        "mains_gas",
+        "lodgement_year",
+        "rdsap10",
+        "loft_insulation_mm",
+        "glazing_pct"
+      ],
+      "logistic_regression": {
+        "roc_auc": 0.8606668759951359,
+        "pr_auc": 0.7713154850026915,
+        "brier": 0.13697886688035235,
+        "accuracy": 0.8026917507058164,
+        "base_rate": 0.32650966036505746,
+        "n": 533779
+      },
+      "gradient_boosting": {
+        "roc_auc": 0.8963899273465423,
+        "pr_auc": 0.8342572414113557,
+        "brier": 0.1172122594554401,
+        "accuracy": 0.8315482624831625,
+        "base_rate": 0.32650966036505746,
+        "n": 533779
+      },
+      "boosting_iterations": 600
+    }
+  },
+  "leave_areas_out_cv": {
+    "core": {
+      "group_column": "region",
+      "fold_roc_auc": [
+        0.7935971830731673,
+        0.7738703753033602,
+        0.803931701640791,
+        0.7804760270205502,
+        0.7798194721297429,
+        0.7967423523807402,
+        0.7945188662522339,
+        0.8105121686564275,
+        0.7671838813664564
+      ],
+      "held_out_areas": [
+        [
+          "London"
+        ],
+        [
+          "North West"
+        ],
+        [
+          "South East"
+        ],
+        [
+          "West Midlands"
+        ],
+        [
+          "Yorkshire and The Humber"
+        ],
+        [
+          "East of England"
+        ],
+        [
+          "East Midlands"
+        ],
+        [
+          "South West"
+        ],
+        [
+          "North East"
+        ]
+      ],
+      "mean_roc_auc": 0.78896133642483,
+      "std_roc_auc": 0.013577106714673007
+    },
+    "extended": {
+      "group_column": "region",
+      "fold_roc_auc": [
+        0.9100444899403699,
+        0.8795273732548279,
+        0.8972914203753691,
+        0.8941277403034211,
+        0.8740474856548,
+        0.8980395775702582,
+        0.8817392236892699,
+        0.8985186833735228,
+        0.8536445923173739
+      ],
+      "held_out_areas": [
+        [
+          "London"
+        ],
+        [
+          "North West"
+        ],
+        [
+          "South East"
+        ],
+        [
+          "West Midlands"
+        ],
+        [
+          "Yorkshire and The Humber"
+        ],
+        [
+          "East of England"
+        ],
+        [
+          "East Midlands"
+        ],
+        [
+          "South West"
+        ],
+        [
+          "North East"
+        ]
+      ],
+      "mean_roc_auc": 0.8874422873865792,
+      "std_roc_auc": 0.01600147588882791
+    }
+  },
+  "n_homes": 2668893
+}

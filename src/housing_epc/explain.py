@@ -332,19 +332,40 @@ def archetype_table(run: RunResult, min_homes: int = 30) -> pd.DataFrame:
     return grp.round({"actual_below_c": 3, "predicted_risk": 3})
 
 
-def local_authority_table(run: RunResult, min_homes: int = 50) -> pd.DataFrame:
-    """Observed vs expected below-C share by area.
+def local_authority_table(run: RunResult, min_homes: int = 50, by: str | None = None) -> pd.DataFrame:
+    """Observed vs expected below-C share by area (local authority, or `by`, e.g. region).
 
     'expected' is what the model predicts from the stock mix alone, so the gap shows
     areas doing better or worse than their housing stock would suggest.
     """
     df = run.test_frame.copy()
     df["predicted_risk"] = run.prob_test
-    label = "local_authority_label" if "local_authority_label" in df else config.GROUP_COLUMN
-    grp = (df.groupby(label, dropna=False)
+    label = by or ("local_authority_label" if "local_authority_label" in df else config.GROUP_COLUMN)
+    grp = (df.groupby(label, dropna=False, observed=True)
            .agg(homes=("below_c", "size"), actual_below_c=("below_c", "mean"),
                 expected_below_c=("predicted_risk", "mean"))
            .reset_index())
     grp["gap"] = grp["actual_below_c"] - grp["expected_below_c"]
     grp = grp[grp["homes"] >= min_homes].sort_values("gap")
     return grp.round(3)
+
+
+def plot_area_gap(table: pd.DataFrame, label_col: str, path: Path, title: str):
+    """Observed share below C by area (bars) against what the stock mix predicts (markers)."""
+    t = table.sort_values("actual_below_c")
+    fig, ax = plt.subplots(figsize=(7, 0.42 * len(t) + 1.4))
+    y = np.arange(len(t))
+    ax.barh(y, t["actual_below_c"], color=BLUE, height=0.62, label="Observed")
+    ax.scatter(t["expected_below_c"], y, color=ORANGE, zorder=3, s=36, label="Expected from stock mix")
+    for yi, v, e in zip(y, t["actual_below_c"], t["expected_below_c"]):
+        ax.text(max(v, e) + 0.008, yi, f"{v:.0%}", va="center", fontsize=9, color=INK)
+    ax.set_yticks(y, t[label_col].astype(str))
+    ax.xaxis.set_major_formatter(matplotlib.ticker.PercentFormatter(1.0, decimals=0))
+    ax.set_xlim(0, max(t["actual_below_c"].max(), t["expected_below_c"].max()) * 1.2)
+    _style(ax, title, xlabel="Share of homes below C (test set)")
+    ax.set_title(ax.get_title(loc="left"), loc="left", fontsize=12, color=INK, pad=30)
+    handles, labels = ax.get_legend_handles_labels()
+    order = [labels.index(lbl) for lbl in sorted(labels, key=lambda lbl: lbl.startswith("2030") or lbl.startswith("Expected"))]
+    ax.legend([handles[i] for i in order], [labels[i] for i in order], frameon=False, fontsize=9, ncol=2,
+              labelcolor=INK, loc="lower left", bbox_to_anchor=(-0.01, 1.0), borderaxespad=0.2, handlelength=1.2)
+    _save(fig, path)

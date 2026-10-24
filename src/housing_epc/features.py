@@ -8,11 +8,13 @@ that a housing professional would recognise.
 from __future__ import annotations
 
 import re
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
 from . import config
+from .load import compact, concat_compact
 
 
 # ---------------------------------------------------------------------------
@@ -155,15 +157,18 @@ def clean_category(s: pd.Series) -> pd.Series:
 def keep_latest_certificate(df: pd.DataFrame) -> pd.DataFrame:
     """One row per home: keep the most recent certificate.
 
-    Homes are identified by UPRN where available, otherwise by first address
-    line plus postcode. Records with neither are kept as they are.
+    Homes are identified by the anonymous home_id of a --history extract, else by
+    UPRN where available, otherwise by first address line plus postcode. Records
+    with none of these are kept as they are.
     """
     df = df.copy()
     sort_col = "lodgement_datetime" if "lodgement_datetime" in df else "lodgement_date"
     df["_ts"] = pd.to_datetime(df[sort_col], errors="coerce")
 
     key = pd.Series(pd.NA, index=df.index, dtype="string")
-    if "uprn" in df:
+    if "home_id" in df:
+        key = df["home_id"].astype("string")
+    elif "uprn" in df:
         key = df["uprn"].astype("string").str.strip().replace("", pd.NA)
     if {"address1", "postcode"} <= set(df.columns):
         fallback = (df["address1"].astype("string").str.upper().str.strip() + "|"
@@ -226,6 +231,50 @@ def build_features(df: pd.DataFrame) -> pd.DataFrame:
     leaked = set(config.LEAKAGE_COLUMNS) & set(out.columns)
     assert not leaked, f"Leakage columns slipped into the feature table: {leaked}"
     return out.reset_index(drop=True)
+
+
+def build_features_chunked(df: pd.DataFrame, chunk_rows: int = 500_000) -> pd.DataFrame:
+    """build_features a slice at a time, storing text as categories. Same result, far less memory."""
+    if len(df) <= chunk_rows:
+        return build_features(df)
+    parts = [compact(build_features(df.iloc[i:i + chunk_rows])) for i in range(0, len(df), chunk_rows)]
+    return concat_compact(parts)
+
+
+def load_region_lookup(path=None) -> dict[str, str]:
+    """Local authority code -> region name, from the ONS lookup if it is present."""
+    path = Path(path or config.REGION_LOOKUP)
+    if not path.exists():
+        return {}
+    lu = pd.read_csv(path, dtype=str, encoding="utf-8-sig")
+    code = next(c for c in lu.columns if re.fullmatch(r"LAD\d{2}CD", c, re.I))
+    name = next(c for c in lu.columns if re.fullmatch(r"RGN\d{2}NM", c, re.I))
+    return dict(zip(lu[code].str.strip(), lu[name].str.strip()))
+
+
+# The EPC register and ONS lookups use different codes for these two areas
+LA_CODE_ALIASES = {"E08000038": "E08000016", "E08000039": "E08000019"}  # Barnsley, Sheffield
+
+
+def add_region(df: pd.DataFrame, lookup: dict[str, str] | None = None) -> pd.DataFrame:
+    """Add a `region` column from the local authority code.
+
+    Welsh authorities become 'Wales'; anything else not in the lookup becomes 'Unknown'.
+    """
+    lookup = load_region_lookup() if lookup is None else lookup
+    if not lookup:
+        return df
+    codes = df["local_authority"].astype("string").str.strip().replace(LA_CODE_ALIASES)
+    region = codes.map(lookup)
+    region = region.where(region.notna() | ~codes.str.startswith("W", na=False), "Wales")
+    df["region"] = region.fillna("Unknown").astype("category")
+    return df
+
+
+def england_only(df: pd.DataFrame) -> pd.DataFrame:
+    """Keep English local authorities (codes starting E). The 2030 standard is for England."""
+    keep = df["local_authority"].astype("string").str.startswith("E", na=False).to_numpy()
+    return df.loc[keep].reset_index(drop=True)
 
 
 def age_band_label(year: pd.Series) -> pd.Series:

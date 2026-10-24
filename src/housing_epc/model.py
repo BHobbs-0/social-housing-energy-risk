@@ -186,9 +186,14 @@ def train_feature_set(df: pd.DataFrame, name: str, test_size: float = 0.2) -> Ru
                      test_df.reset_index(drop=True), prob_boost, metrics)
 
 
-def leave_areas_out_cv(df: pd.DataFrame, name: str, n_splits: int = 5) -> dict | None:
-    """Train on some local authorities, test on others. Returns None if too few areas."""
-    groups = df[config.GROUP_COLUMN].fillna("unknown").to_numpy()
+def leave_areas_out_cv(df: pd.DataFrame, name: str, n_splits: int = 5,
+                       group_col: str = config.GROUP_COLUMN) -> dict | None:
+    """Train on some areas, test on others. Returns None if too few areas.
+
+    Groups are local authorities by default; with `group_col="region"` and n_splits equal
+    to the number of regions, each fold holds out one whole region.
+    """
+    groups = df[group_col].astype("string").fillna("unknown").to_numpy()
     n_groups = len(np.unique(groups))
     if n_groups < 3:
         print(f"  only {n_groups} local authorities: skipping leave-areas-out validation")
@@ -196,7 +201,10 @@ def leave_areas_out_cv(df: pd.DataFrame, name: str, n_splits: int = 5) -> dict |
     spec = config.FEATURE_SETS[name]
     categorical, numeric = drop_features_with_no_data(df, spec["categorical"], spec["numeric"])
 
-    label_col = "local_authority_label" if "local_authority_label" in df else config.GROUP_COLUMN
+    if group_col == config.GROUP_COLUMN:
+        label_col = "local_authority_label" if "local_authority_label" in df else config.GROUP_COLUMN
+    else:
+        label_col = group_col
     aucs, held_out = [], []
     for train_idx, test_idx in GroupKFold(n_splits=min(n_splits, n_groups)).split(df, groups=groups):
         tr, te = df.iloc[train_idx], df.iloc[test_idx]
@@ -206,5 +214,5 @@ def leave_areas_out_cv(df: pd.DataFrame, name: str, n_splits: int = 5) -> dict |
         model = make_booster(enc.categorical_mask).fit(enc.transform(tr), tr["below_c"])
         aucs.append(float(roc_auc_score(te["below_c"], model.predict_proba(enc.transform(te))[:, 1])))
         held_out.append(sorted(te[label_col].dropna().astype(str).unique().tolist()))
-    return {"fold_roc_auc": aucs, "held_out_areas": held_out,
+    return {"group_column": group_col, "fold_roc_auc": aucs, "held_out_areas": held_out,
             "mean_roc_auc": float(np.mean(aucs)), "std_roc_auc": float(np.std(aucs))}

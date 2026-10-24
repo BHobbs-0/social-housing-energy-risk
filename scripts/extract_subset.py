@@ -8,7 +8,8 @@ Reads one or more CSV files, zip files or folders (any mix), keeps only:
 and writes a compressed CSV, typically a few MB.
 
 With --history it keeps EVERY social rented certificate for each home instead of
-just the latest, plus the SAP score and the reason the certificate was lodged.
+just the latest, plus the SAP score and the reason the certificate was lodged. It
+writes as it reads, so even the full national download (8GB+) needs little memory.
 Homes are linked by an anonymous home_id: a salted hash of the UPRN (or address
 and postcode) whose salt is random for each run and never saved, so the id cannot
 be traced back to an address. This file feeds the 2030 forecast.
@@ -21,6 +22,7 @@ Examples
     python scripts/extract_subset.py big.csv --areas E08000025 E09000028
     python scripts/extract_subset.py big.csv --all-areas
     python scripts/extract_subset.py Downloads/epc.zip --history     # every certificate, for forecasting
+    python scripts/extract_subset.py all-domestic-csv.zip --history --all-areas --out epc_social_history_england.csv.gz
 """
 
 from __future__ import annotations
@@ -29,11 +31,13 @@ import argparse
 import hashlib
 import io
 import re
+import gzip
 import secrets
 import sys
 import zipfile
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 DEFAULT_AREAS = {
@@ -94,19 +98,26 @@ def zip_sources(path: Path):
 
 
 def read_filtered(label, opener, codes, names, all_areas, chunksize, min_year=MIN_YEAR, keep=KEEP):
+    """All matching rows from one CSV as a single frame, or None."""
+    chunks = list(iter_filtered(label, opener, codes, names, all_areas, chunksize, min_year, keep))
+    return pd.concat(chunks, ignore_index=True) if chunks else None
+
+
+def iter_filtered(label, opener, codes, names, all_areas, chunksize, min_year=MIN_YEAR, keep=KEEP):
+    """Yield the matching rows of one CSV, a chunk at a time."""
     with opener() as fh:
         header = pd.read_csv(fh, nrows=0).columns.tolist()
     rename = {c: norm(c) for c in header}
     canon = set(rename.values())
     if "current_energy_rating" not in canon:
-        return None  # recommendations file or something else
+        return  # recommendations file or something else
     missing = [c for c in ("tenure", "lodgement_date", "local_authority") if c not in canon]
     if missing:
         print(f"  {label}: missing {missing}; columns found: {sorted(canon)}")
-        return None
+        return
     usecols = [c for c, n in rename.items() if n in set(keep + DEDUPE_ONLY)]
 
-    kept, rows_read, areas_seen = [], 0, {}
+    rows_read, rows_kept, areas_seen = 0, 0, {}
     with opener() as fh:
         reader = pd.read_csv(io.TextIOWrapper(fh, encoding="utf-8", errors="replace"), usecols=usecols,
                              dtype=str, chunksize=chunksize, keep_default_na=False, na_values=NA)
@@ -123,14 +134,13 @@ def read_filtered(label, opener, codes, names, all_areas, chunksize, min_year=MI
                     area |= chunk["local_authority_label"].str.lower().isin(names)
                 mask &= area
             if mask.any():
-                kept.append(chunk.loc[mask])
-            print(f"\r  {label}: {rows_read:,} rows read", end="", flush=True)
+                rows_kept += int(mask.sum())
+                yield chunk.loc[mask]
+            print(f"\r  {label}: {rows_read:,} rows read, {rows_kept:,} kept", end="", flush=True)
     print()
-    if not kept:
+    if not rows_kept:
         top = sorted(areas_seen.items(), key=lambda kv: -kv[1])[:10]
         print(f"  no matching rows. Most common local authority values in this file: {top}")
-        return None
-    return pd.concat(kept, ignore_index=True)
 
 
 def latest_per_home(df: pd.DataFrame) -> pd.DataFrame:
@@ -156,18 +166,44 @@ def home_key(df: pd.DataFrame) -> pd.Series:
     return key
 
 
-def all_certificates(df: pd.DataFrame) -> pd.DataFrame:
-    """Every certificate, linked by an anonymous home_id. Homes with no UPRN or address are dropped."""
-    salt = secrets.token_bytes(16)  # random per run and never written anywhere
+def anonymise(df: pd.DataFrame, salt: bytes) -> pd.DataFrame:
+    """Replace UPRN and address with a salted hash. Homes with no UPRN or address are dropped."""
     key = home_key(df)
     df = df.loc[key.notna()].copy()
     df["home_id"] = [hashlib.sha256(salt + k.encode()).hexdigest()[:16] for k in key.loc[df.index]]
+    df = df.drop(columns=[c for c in DEDUPE_ONLY if c in df.columns])
+    return df[["home_id", *[c for c in df.columns if c != "home_id"]]]
+
+
+def all_certificates(df: pd.DataFrame) -> pd.DataFrame:
+    """Every certificate, linked by an anonymous home_id. Homes with no UPRN or address are dropped."""
+    salt = secrets.token_bytes(16)  # random per run and never written anywhere
+    df = anonymise(df, salt)
     sort_col = "lodgement_datetime" if "lodgement_datetime" in df else "lodgement_date"
     df["_ts"] = pd.to_datetime(df[sort_col], errors="coerce")
     # the same certificate can appear in more than one download
     df = df.sort_values(["home_id", "_ts"]).drop_duplicates(["home_id", "_ts", "current_energy_rating"])
-    df = df.drop(columns=["_ts", *[c for c in DEDUPE_ONLY if c in df.columns]])
-    return df[["home_id", *[c for c in df.columns if c != "home_id"]]].reset_index(drop=True)
+    return df.drop(columns=["_ts"]).reset_index(drop=True)
+
+
+def stream_history(inputs, out, codes, names, all_areas, chunksize, min_year) -> np.ndarray | None:
+    """Write every matching certificate to `out` as it is read. Returns the hashed home ids seen.
+
+    Certificates that appear in more than one input are de-duplicated later, when the
+    file is loaded (by home and date).
+    """
+    salt = secrets.token_bytes(16)  # random per run and never written anywhere
+    cols = ["home_id", *KEEP, *HISTORY_EXTRA]
+    ids, header = [], True
+    with gzip.open(out, "wt", encoding="utf-8", newline="") as fh:
+        for label, opener in sources(inputs):
+            for chunk in iter_filtered(label, opener, codes, names, all_areas, chunksize, min_year,
+                                       KEEP + HISTORY_EXTRA):
+                chunk = anonymise(chunk, salt).reindex(columns=cols)
+                chunk.to_csv(fh, index=False, header=header)
+                header = False
+                ids.append(np.array([int(h, 16) for h in chunk["home_id"]], dtype=np.uint64))
+    return np.concatenate(ids) if ids else None
 
 
 def main():
@@ -194,6 +230,20 @@ def main():
     keep = KEEP + HISTORY_EXTRA if args.history else KEEP
     out = args.out or ("epc_social_history.csv.gz" if args.history else "epc_social_subset.csv.gz")
 
+    if args.history:
+        ids = stream_history(args.inputs, out, codes, names, args.all_areas, args.chunksize, min_year)
+        if ids is None:
+            Path(out).unlink(missing_ok=True)
+            sys.exit("Nothing matched. Check the area codes printed above and rerun with --areas.")
+        _, counts = np.unique(ids, return_counts=True)
+        size_mb = Path(out).stat().st_size / 1e6
+        print(f"\nWrote {len(ids):,} certificates for {len(counts):,} social rented homes to {out} "
+              f"({size_mb:.1f} MB); {(counts > 1).sum():,} homes have more than one certificate")
+        if not args.all_areas:
+            areas = pd.read_csv(out, usecols=["local_authority_label"])["local_authority_label"]
+            print(areas.value_counts().to_string())
+        return
+
     frames = []
     for label, opener in sources(args.inputs):
         df = read_filtered(label, opener, codes, names, args.all_areas, args.chunksize, min_year, keep)
@@ -202,16 +252,10 @@ def main():
     if not frames:
         sys.exit("Nothing matched. Check the area codes printed above and rerun with --areas.")
 
-    combined = pd.concat(frames, ignore_index=True)
-    data = all_certificates(combined) if args.history else latest_per_home(combined)
+    data = latest_per_home(pd.concat(frames, ignore_index=True))
     data.to_csv(out, index=False, compression="gzip")
     size_mb = Path(out).stat().st_size / 1e6
-    if args.history:
-        counts = data["home_id"].value_counts()
-        print(f"\nWrote {len(data):,} certificates for {len(counts):,} social rented homes to {out} "
-              f"({size_mb:.1f} MB); {(counts > 1).sum():,} homes have more than one certificate")
-    else:
-        print(f"\nWrote {len(data):,} social rented homes to {out} ({size_mb:.1f} MB)")
+    print(f"\nWrote {len(data):,} social rented homes to {out} ({size_mb:.1f} MB)")
     label_col = "local_authority_label" if "local_authority_label" in data else "local_authority"
     print(data[label_col].value_counts().to_string())
 
