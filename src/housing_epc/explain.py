@@ -143,14 +143,15 @@ def plot_feature_set_comparison(metrics: dict, path: Path):
 
 def plot_calibration(y_true, prob, path: Path, title: str):
     frac_pos, mean_pred = calibration_curve(y_true, prob, n_bins=10, strategy="quantile")
-    fig, ax = plt.subplots(figsize=(5, 4.5))
+    # Same width as the other charts so it displays at the same scale in the README
+    fig, ax = plt.subplots(figsize=(7, 4.2))
     ax.plot([0, 1], [0, 1], color=INK_2, linewidth=1, linestyle="--", label="Perfect calibration")
     ax.plot(mean_pred, frac_pos, color=BLUE, linewidth=2, marker="o", markersize=6, label="Model")
     ax.set_xlim(0, 1)
     ax.set_ylim(0, 1)
     _style(ax, title, xlabel="Predicted probability of being below C", ylabel="Observed share below C")
     ax.grid(axis="y", color=GRID, linewidth=0.8)
-    ax.legend(frameon=False, fontsize=9, labelcolor=INK)
+    ax.legend(frameon=False, fontsize=9, labelcolor=INK, loc="upper left")
     _save(fig, path)
 
 
