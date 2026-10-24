@@ -51,7 +51,7 @@ Wall insulation is the single strongest signal, followed by property type, loft 
 - **Build era:** predicted risk falls steadily from almost 60% for pre-1920 homes to about 2% for homes built after 2003, other factors held constant.
 - **Bungalows and houses** (46% and 38% below C) are far more likely to be below C than flats (24%), which lose less heat through shared walls, floors and ceilings.
 
-**Highest-risk archetypes with at least 500 homes in the test set:**
+**Highest-risk archetypes with at least 500 homes in the test set (a fifth of all homes), with the interwar gas-heated house for comparison:**
 
 | Property type | Build era | Main fuel | Homes | Actual below C | Predicted |
 |---|---|---|---|---|---|
