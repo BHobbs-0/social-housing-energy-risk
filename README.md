@@ -22,7 +22,7 @@ This project uses **136,379 Energy Performance Certificates for social rented ho
 - **It transfers to areas the model has never seen.** Training on four areas and testing on the fifth gives **0.76** (core) and **0.87** (extended) across all five areas. These are the realistic figures for a landlord applying the model to new stock.
 - **Gradient boosting beats logistic regression in every comparison** (0.82 vs 0.76 core, 0.90 vs 0.86 extended). Combinations of features matter, which a linear model cannot fully capture.
 
-![Calibration](reports/figures/02_calibration_extended.png)
+<p align="center"><img src="reports/figures/02_calibration_extended.png" alt="Calibration" width="500"></p>
 
 The predicted probabilities are also **well calibrated**: they track observed rates closely, so a predicted 40% risk really does mean roughly 40 in 100 such homes are below C. That makes the scores usable for planning, not just ranking.
 
