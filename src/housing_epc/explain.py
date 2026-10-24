@@ -18,6 +18,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.ticker
+from matplotlib.patches import FancyBboxPatch
 import numpy as np
 import pandas as pd
 from sklearn.calibration import calibration_curve
@@ -31,11 +32,11 @@ from .model import RunResult
 # "dark" matches GitHub's dark theme so figures sit seamlessly in the README.
 THEMES = {
     "dark": {"BLUE": "#3987e5", "ORANGE": "#d95926", "INK": "#e6edf3", "INK_2": "#9198a1",
-             "GRID": "#30363d", "SURFACE": "#0d1117"},
+             "GRID": "#30363d", "SURFACE": "#0d1117", "BORDER": "#3d444d"},
     "light": {"BLUE": "#2a78d6", "ORANGE": "#eb6834", "INK": "#0b0b0b", "INK_2": "#52514e",
-              "GRID": "#e4e3df", "SURFACE": "#ffffff"},
+              "GRID": "#e4e3df", "SURFACE": "#ffffff", "BORDER": "#d1d9e0"},
 }
-BLUE = ORANGE = INK = INK_2 = GRID = SURFACE = ""
+BLUE = ORANGE = INK = INK_2 = GRID = SURFACE = BORDER = ""
 
 
 def set_theme(name: str = "dark") -> None:
@@ -83,9 +84,23 @@ def _style(ax, title: str, xlabel: str = "", ylabel: str = ""):
     ax.set_axisbelow(True)
 
 
+def _add_border(fig, pad_px: float = 6, radius_px: float = 10):
+    """Draw a rounded border around the whole figure, like GitHub's own content boxes.
+
+    GitHub strips CSS from READMEs, so the border has to be part of the image.
+    """
+    w, h = fig.get_size_inches() * fig.dpi
+    fig.patches.append(FancyBboxPatch(
+        (pad_px / w, pad_px / h), 1 - 2 * pad_px / w, 1 - 2 * pad_px / h,
+        boxstyle=f"round,pad=0,rounding_size={radius_px / min(w, h)}",
+        transform=fig.transFigure, facecolor="none", edgecolor=BORDER, linewidth=1.2, zorder=10,
+    ))
+
+
 def _save(fig, path: Path):
     path.parent.mkdir(parents=True, exist_ok=True)
-    fig.tight_layout()
+    fig.tight_layout(pad=1.6)
+    _add_border(fig)
     fig.savefig(path, dpi=150, facecolor=SURFACE)
     plt.close(fig)
     print(f"  saved {path.relative_to(config.PROJECT_ROOT) if path.is_relative_to(config.PROJECT_ROOT) else path}")
@@ -102,7 +117,7 @@ def plot_feature_set_comparison(metrics: dict, path: Path):
             rows.append((fs, model_name, m[model_name]["roc_auc"]))
     df = pd.DataFrame(rows, columns=["feature_set", "model", "roc_auc"])
 
-    fig, ax = plt.subplots(figsize=(7, 3.8))
+    fig, ax = plt.subplots(figsize=(7, 3.6))
     sets = list(metrics)
     y = np.arange(len(sets))
     h = 0.36
@@ -117,10 +132,12 @@ def plot_feature_set_comparison(metrics: dict, path: Path):
                     va="center", fontsize=9, color=INK)
     ax.set_yticks(y, [f"{s.capitalize()} features" for s in sets])
     ax.set_xlim(0.5, 1.0)
-    _style(ax, "Test-set ROC AUC by feature set and model", xlabel="ROC AUC (0.5 = random)")
+    _style(ax, "ROC AUC on held-out homes", xlabel="ROC AUC (0.5 = random)")
     handles, labels = ax.get_legend_handles_labels()
+    # Legend gets its own line between the title and the bars
+    ax.set_title(ax.get_title(loc="left"), loc="left", fontsize=12, color=INK, pad=30)
     ax.legend(handles[::-1], labels[::-1], frameon=False, fontsize=9, ncol=2, labelcolor=INK,
-              loc="upper center", bbox_to_anchor=(0.5, -0.25))
+              loc="lower left", bbox_to_anchor=(-0.01, 1.0), borderaxespad=0.2, handlelength=1.2)
     _save(fig, path)
 
 
