@@ -319,17 +319,29 @@ def plot_shap_dependence(run: RunResult, values: np.ndarray, X: np.ndarray, feat
 # ---------------------------------------------------------------------------
 # Stakeholder tables
 # ---------------------------------------------------------------------------
-def archetype_table(run: RunResult, min_homes: int = 30) -> pd.DataFrame:
-    """Risk by housing archetype (type x build era x fuel), on the test set."""
-    df = run.test_frame.copy()
-    df["predicted_risk"] = run.prob_test
-    df["build_era"] = age_band_label(df["construction_year"])
-    grp = (df.groupby(["property_type", "build_era", "fuel_group"], dropna=False)
-           .agg(homes=("below_c", "size"), actual_below_c=("below_c", "mean"),
-                predicted_risk=("predicted_risk", "mean"))
+def archetype_table(run: RunResult, population: pd.DataFrame | None = None, min_homes: int = 150) -> pd.DataFrame:
+    """Risk by housing archetype (type x build era x fuel).
+
+    `homes`, `homes_below_c` and `actual_below_c` count every home in `population` (all homes
+    modelled), so they are the real numbers. `predicted_risk` is the model's average for the
+    archetype's homes in the held-out test set, where predictions are a fair test.
+    Without `population`, everything comes from the test set.
+    """
+    test = run.test_frame.copy()
+    test["predicted_risk"] = run.prob_test
+    keys = ["property_type", "build_era", "fuel_group"]
+    test["build_era"] = age_band_label(test["construction_year"])
+    pred = test.groupby(keys, dropna=False, observed=True)["predicted_risk"].mean()
+    pop = test if population is None else population.assign(build_era=age_band_label(population["construction_year"]))
+    for k in keys:
+        pop = pop.assign(**{k: pop[k].astype(object)})
+    grp = (pop.groupby(keys, dropna=False)
+           .agg(homes=("below_c", "size"), homes_below_c=("below_c", "sum"), actual_below_c=("below_c", "mean"))
            .reset_index())
-    grp = grp[grp["homes"] >= min_homes].sort_values("predicted_risk", ascending=False)
-    return grp.round({"actual_below_c": 3, "predicted_risk": 3})
+    pred.index = pred.index.set_levels([lv.astype(object) for lv in pred.index.levels])
+    grp["predicted_risk"] = grp.set_index(keys).index.map(pred.to_dict()).astype(float)
+    grp = grp[(grp["homes"] >= min_homes) & grp["predicted_risk"].notna()].sort_values("predicted_risk", ascending=False)
+    return grp.round({"actual_below_c": 3, "predicted_risk": 3}).reset_index(drop=True)
 
 
 def local_authority_table(run: RunResult, min_homes: int = 50, by: str | None = None) -> pd.DataFrame:

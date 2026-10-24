@@ -70,12 +70,14 @@ def write_summary(path: Path, table: pd.DataFrame, metrics: dict, cv: dict, top_
     lines += ["## Most important drivers (extended model, permutation importance)", ""]
     for _, r in top_features.head(6).iterrows():
         lines.append(f"- {explain.pretty(r['feature'])}: ROC AUC drops by {r['auc_drop_mean']:.3f} when shuffled")
-    lines += ["", "## Highest-risk archetypes (core model, test set)", "",
-              "| Property type | Build era | Main fuel | Homes | Actual below C | Predicted |",
-              "|---|---|---|---|---|---|"]
+    lines += ["", "## Highest-risk archetypes (core model)", "",
+              "Homes and the share below C count every home. Predicted is the model's average risk for the "
+              "archetype's homes in the held-out test set.", "",
+              "| Property type | Build era | Main fuel | Homes | Below C | Share below C | Predicted |",
+              "|---|---|---|---|---|---|---|"]
     for _, r in archetypes.head(10).iterrows():
         lines.append(f"| {r['property_type']} | {r['build_era']} | {r['fuel_group']} | {r['homes']:,} | "
-                     f"{r['actual_below_c']:.0%} | {r['predicted_risk']:.0%} |")
+                     f"{r['homes_below_c']:,} | {r['actual_below_c']:.0%} | {r['predicted_risk']:.0%} |")
     where = path.parent.relative_to(config.PROJECT_ROOT) if path.parent.is_relative_to(config.PROJECT_ROOT) else path.parent
     lines += ["", f"Figures are in `{where.as_posix()}/figures/`. Archetype and area tables are in `{where.as_posix()}/`.", ""]
     path.write_text("\n".join(lines), encoding="utf-8")
@@ -167,7 +169,8 @@ def main(argv=None):
                 explain.plot_shap_dependence(run, values, X, f, fig / f"06_shap_{f}.png")
 
     # at least 30 test homes, or 0.1% of them for national-scale data, so tiny groups don't top the list
-    archetypes = explain.archetype_table(runs["core"], min_homes=max(30, len(runs["core"].y_test) // 1000))
+    # counts over all homes; at least 150 homes, or 0.1% of them at national scale, so tiny groups don't top the list
+    archetypes = explain.archetype_table(runs["core"], population=table, min_homes=max(150, len(table) // 1000))
     archetypes.to_csv(config.REPORTS_DIR / "archetype_risk.csv", index=False)
     explain.local_authority_table(runs["core"]).to_csv(config.REPORTS_DIR / "local_authority_gap.csv", index=False)
     if "region" in table and table["region"].nunique() > 1:

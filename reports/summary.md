@@ -39,19 +39,21 @@ Adding survey-level fabric and heating detail moves gradient boosting ROC AUC fr
 - Main fuel: ROC AUC drops by 0.049 when shuffled
 - Roof type: ROC AUC drops by 0.033 when shuffled
 
-## Highest-risk archetypes (core model, test set)
+## Highest-risk archetypes (core model)
 
-| Property type | Build era | Main fuel | Homes | Actual below C | Predicted |
-|---|---|---|---|---|---|
-| House | 1930-49 | oil | 30 | 100% | 94% |
-| House | pre-1930 | electricity | 34 | 74% | 79% |
-| House | 1950-66 | oil | 45 | 73% | 79% |
-| House | 1983-2002 | electricity | 180 | 79% | 77% |
-| Flat | pre-1930 | electricity | 141 | 77% | 71% |
-| Bungalow | 1983-2002 | electricity | 52 | 73% | 71% |
-| House | 1930-49 | electricity | 89 | 61% | 64% |
-| Bungalow | 1950-66 | electricity | 71 | 70% | 62% |
-| Flat | 1950-66 | electricity | 373 | 58% | 60% |
-| House | 1967-82 | communal | 188 | 62% | 58% |
+Homes and the share below C count every home. Predicted is the model's average risk for the archetype's homes in the held-out test set.
+
+| Property type | Build era | Main fuel | Homes | Below C | Share below C | Predicted |
+|---|---|---|---|---|---|---|
+| Bungalow | 1930-49 | communal | 159 | 145 | 91% | 92% |
+| House | pre-1930 | electricity | 247 | 182 | 74% | 79% |
+| House | 1950-66 | oil | 216 | 166 | 77% | 79% |
+| House | 1983-2002 | electricity | 821 | 651 | 79% | 77% |
+| Flat | pre-1930 | electricity | 688 | 483 | 70% | 71% |
+| Bungalow | 1983-2002 | electricity | 275 | 207 | 75% | 71% |
+| House | 1930-49 | electricity | 468 | 301 | 64% | 64% |
+| Bungalow | 1950-66 | electricity | 367 | 229 | 62% | 62% |
+| Flat | 1950-66 | electricity | 1,908 | 1,126 | 59% | 60% |
+| House | 1967-82 | communal | 994 | 565 | 57% | 58% |
 
 Figures are in `reports/figures/`. Archetype and area tables are in `reports/`.

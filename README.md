@@ -51,22 +51,22 @@ Wall insulation is the single strongest signal, followed by property type, loft 
 - **Build era:** predicted risk falls steadily from almost 60% for homes built before 1930 to about 2% for homes built since 2003, other factors held constant.
 - **Bungalows and houses** (46% and 38% below C) are far more likely to be below C than flats (24%), which lose less heat through shared walls, floors and ceilings.
 
-**Highest-risk archetypes with at least 500 homes in the test set (a fifth of all homes), with the two largest groups for comparison:**
+**Highest-risk archetypes (each with at least 0.1% of homes), with the two largest groups for comparison:**
 
-| Property type | Build era | Main fuel | Homes | Actual below C | Predicted |
-|---|---|---|---|---|---|
-| House | 1930-49 | Oil | 608 | 92% | 90% |
-| House | 1950-66 | Oil | 820 | 86% | 85% |
-| House | pre-1930 | Electricity | 738 | 78% | 76% |
-| Flat | pre-1930 | Electricity | 2,713 | 72% | 71% |
-| Bungalow | pre-1930 | Mains gas | 682 | 71% | 70% |
-| Maisonette | 1967-82 | Electricity | 557 | 73% | 70% |
-| House | 1930-49 | Mains gas | 48,545 | 49% | 49% |
-| House | 1950-66 | Mains gas | 65,482 | 37% | 37% |
+| Property type | Build era | Main fuel | Homes | Below C | Share below C | Predicted |
+|---|---|---|---|---|---|---|
+| House | 1930-49 | Oil | 2,894 | 2,628 | 91% | 90% |
+| House | 1950-66 | Oil | 4,014 | 3,392 | 84% | 85% |
+| House | pre-1930 | Electricity | 3,492 | 2,693 | 77% | 76% |
+| Flat | pre-1930 | Electricity | 13,662 | 9,846 | 72% | 71% |
+| Bungalow | pre-1930 | Mains gas | 3,332 | 2,334 | 70% | 70% |
+| Maisonette | 1967-82 | Electricity | 2,814 | 2,039 | 72% | 70% |
+| House | 1930-49 | Mains gas | 241,916 | 118,501 | 49% | 49% |
+| House | 1950-66 | Mains gas | 328,600 | 122,517 | 37% | 37% |
 
-*Build eras follow the age bands on the certificates, which record a band rather than an exact year for almost all homes.*
+*Homes, below C and share count every home with a certificate since 2015. Predicted is the model's average risk for the same archetype's homes in the held-out test set, which it did not see in training, so it can be compared fairly with the actual share. Build eras follow the age bands on the certificates, which record a band rather than an exact year for almost all homes.*
 
-Neither of the last two is among the riskiest archetypes, but by number they are the **largest** at-risk groups. Across all homes, **122,517 gas-heated houses built in 1950-66 and 118,501 built in 1930-49 are below C** on their latest certificate, more than a quarter of all homes below C between them. The older houses are more likely to be below C; there are simply more of the newer ones. That makes both natural targets for retrofit programmes.
+Neither of the last two is among the riskiest archetypes, but they are by far the **largest** at-risk groups: between them, **241,018 gas-heated houses are below C**, more than a quarter of all homes below C. The 1930-49 houses are more likely to be below C; there are simply more of the 1950-66 ones. That makes both natural targets for retrofit programmes.
 
 ### A methodology change shows up in the data
 
