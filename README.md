@@ -51,7 +51,7 @@ Wall insulation is the single strongest signal, followed by property type, loft 
 - **Build era:** predicted risk falls steadily from almost 60% for pre-1920 homes to about 2% for homes built after 2003, other factors held constant.
 - **Bungalows and houses** (46% and 38% below C) are far more likely to be below C than flats (24%), which lose less heat through shared walls, floors and ceilings.
 
-**Highest-risk archetypes with at least 500 homes in the test set (a fifth of all homes), with the interwar gas-heated house for comparison:**
+**Highest-risk archetypes with at least 500 homes in the test set (a fifth of all homes), with the two largest groups for comparison:**
 
 | Property type | Build era | Main fuel | Homes | Actual below C | Predicted |
 |---|---|---|---|---|---|
@@ -62,8 +62,9 @@ Wall insulation is the single strongest signal, followed by property type, loft 
 | Bungalow | pre-1919 | Mains gas | 682 | 71% | 70% |
 | Maisonette | 1965-82 | Electricity | 557 | 73% | 70% |
 | House | 1919-44 | Mains gas | 48,545 | 49% | 49% |
+| House | 1945-64 | Mains gas | 65,482 | 37% | 37% |
 
-The interwar gas-heated house is not among the riskiest archetypes, but it is by far the **largest** at-risk group: **118,501 of them are below C** on their latest certificate, more than any other archetype. That makes it a natural target for retrofit programmes.
+Neither of the last two is among the riskiest archetypes, but by number they are the **largest** at-risk groups. Across all homes, **122,517 post-war (1945-64) and 118,501 interwar (1919-44) gas-heated houses are below C** on their latest certificate, more than a quarter of all homes below C between them. Interwar houses are more likely to be below C; there are simply more post-war ones. That makes both natural targets for retrofit programmes.
 
 ### A methodology change shows up in the data
 
@@ -103,7 +104,7 @@ The models above are a snapshot. To look forward, the forecast uses homes that h
 - **Latest certificates overstate the problem.** Many are a decade old. Scored as if reassessed today, about one in five homes is likely to be below C, not one in three.
 - **On current evidence, the deadline will be missed.** Clearing every below-C home by April 2030 means about **177,000 fewer below-C homes a year**. Even if the recent improvement trend continues, the fall is about **86,000 a year**, half the pace needed, leaving around 310,000 homes below C.
 - **It is consistent with the national survey.** The English Housing Survey found social rented homes below C falling by about 2 percentage points a year ([30% in 2022, 26% in 2024](https://www.gov.uk/government/statistics/chapters-for-english-housing-survey-2024-to-2025-headline-findings-on-housing-quality-and-energy-efficiency/chapter-2-energy-efficiency)), which would put 2026 at roughly 22%. This estimate of 20% is slightly lower, in line with the first caveat below.
-- **The biggest group is unchanged.** Interwar gas-heated houses are still the largest at-risk archetype: about 84,000 likely to be below C today, and about 43,000 in 2030 even if the trend continues.
+- **The same two groups dominate.** Scored as if reassessed today, interwar gas-heated houses are the largest group likely to be below C (about 84,000), just ahead of post-war ones (about 79,000). Even if the trend continues, about 43,000 and 38,000 would still be below C in 2030.
 
 Full numbers are in [`reports/england/forecast_summary.md`](reports/england/forecast_summary.md), with tables by region, local authority and archetype alongside.
 
