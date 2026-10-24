@@ -146,3 +146,10 @@ def test_dates_stored_as_categories_still_sort_by_date():
     out = features.keep_latest_certificate(df)
     assert out["lodgement_date"].astype(str).tolist() == ["2024-05-01"]
     assert features.to_dates(dates).dt.year.tolist() == [2024, 2016, 2020]
+
+
+def test_regions_only_reported_when_they_group_areas():
+    five = pd.DataFrame({"local_authority": list("abcde"), "region": list("VWXYZ")})
+    england = pd.DataFrame({"local_authority": list("abcdef"), "region": list("XXYYZZ")})
+    assert not features.regions_add_detail(five)
+    assert features.regions_add_detail(england)

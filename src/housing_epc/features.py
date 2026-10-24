@@ -276,6 +276,19 @@ def add_region(df: pd.DataFrame, lookup: dict[str, str] | None = None) -> pd.Dat
     return df
 
 
+def regions_add_detail(df: pd.DataFrame) -> bool:
+    """True when regions group several local authorities, so regional results say something new.
+
+    With only a few local authorities (each its own region) a regional table would just
+    repeat the local authority one, so the five development areas are reported by area.
+    """
+    if "region" not in df:
+        return False
+    regions = df["region"].astype("string").dropna()
+    regions = regions[~regions.isin(["Unknown", "Wales"])].nunique()
+    return regions >= 3 and df["local_authority"].nunique() > regions
+
+
 def england_only(df: pd.DataFrame) -> pd.DataFrame:
     """Keep English local authorities (codes starting E). The 2030 standard is for England."""
     keep = df["local_authority"].astype("string").str.startswith("E", na=False).to_numpy()

@@ -8,7 +8,7 @@ This project uses Energy Performance Certificates for **3 million social rented 
 2. **Explanation:** what actually drives the risk, and how much better do we do when we also know about walls, roofs, insulation and heating? This is the **extended** model.
 3. **Forecast:** using homes that have been assessed more than once, how many are likely to be below C today, and on 1 April 2030?
 
-The method was built and tested on five contrasting local authorities first, then run unchanged on the whole country. See [Five areas first, then England](#five-areas-first-then-england) for why, and how the results compare.
+The method was built and tested on five contrasting local authorities first, then applied to the whole country. See [Five areas first, then England](#five-areas-first-then-england) for why, and how the results compare.
 
 ## At a glance
 
@@ -51,7 +51,7 @@ Wall insulation is the single strongest signal, followed by property type, loft 
 - **Build era:** predicted risk falls steadily from almost 60% for homes built before 1930 to about 2% for homes built since 2003, other factors held constant.
 - **Bungalows and houses** (46% and 38% below C) are far more likely to be below C than flats (24%), which lose less heat through shared walls, floors and ceilings.
 
-**Highest-risk archetypes (each with at least 0.1% of homes), with the two largest groups for comparison:**
+**Highest-risk archetypes (each with at least 0.1% of homes, about 2,700), with the two largest groups for comparison:**
 
 | Property type | Build era | Main fuel | Homes | Below C | Share below C | Predicted |
 |---|---|---|---|---|---|---|
@@ -64,7 +64,7 @@ Wall insulation is the single strongest signal, followed by property type, loft 
 | House | 1930-49 | Mains gas | 241,916 | 118,501 | 49% | 49% |
 | House | 1950-66 | Mains gas | 328,600 | 122,517 | 37% | 37% |
 
-*Homes, below C and share count every home with a certificate since 2015. Predicted is the model's average risk for the same archetype's homes in the held-out test set, which it did not see in training, so it can be compared fairly with the actual share. Build eras follow the age bands on the certificates, which record a band rather than an exact year for almost all homes.*
+*Homes, below C and share count every home with a certificate since 2015. Predicted is the core model's average risk for the same archetype's homes in the held-out test set, which it did not see in training, so it can be compared fairly with the actual share. Build eras follow the age bands on the certificates, which record a band rather than an exact year for almost all homes.*
 
 Neither of the last two is among the riskiest archetypes, but they are by far the **largest** at-risk groups: between them, **241,018 gas-heated houses are below C**, more than a quarter of all homes below C. The 1930-49 houses are more likely to be below C; there are simply more of the 1950-66 ones. That makes both natural targets for retrofit programmes.
 
@@ -72,7 +72,7 @@ Neither of the last two is among the riskiest archetypes, but they are by far th
 
 ![Share below C over time](reports/england/figures/00_below_c_over_time.png)
 
-The share of assessed homes below C fell from 45% in 2015 to 25% in 2024, then edged up after the assessment method changed to **RdSAP 10 on 15 June 2025**. Holding everything else constant, the model estimates that being assessed under RdSAP 10 adds about **1.7 percentage points** to a home's risk of being below C. Comparing ratings across this change without adjusting for it could make a landlord's stock look worse than it is, so the models include the assessment year and an RdSAP 10 flag as controls.
+The share of assessed homes below C fell from 45% in 2015 to 25% in 2024, then edged up after the assessment method changed to **RdSAP 10 on 15 June 2025**. Holding everything else constant, the extended model estimates that being assessed under RdSAP 10 adds about **1.7 percentage points** to a home's risk of being below C. Comparing ratings across this change without adjusting for it could make a landlord's stock look worse than it is, so the models include the assessment year and an RdSAP 10 flag as controls.
 
 This chart should not be read as a trend for the whole stock. Each quarter shows the homes that happened to be assessed then (mostly homes being re-let), not a consistent picture of all homes, so extending the line forward would be misleading. The [forecast](#forecasting-the-position-in-2030) looks forward properly, by following the same homes from one certificate to the next.
 
@@ -103,7 +103,7 @@ The models above are a snapshot. To look forward, the forecast uses homes that h
 
 *Ranges are 90% intervals from refitting the model on resampled homes. They cover uncertainty in the fit, not in which scenario holds. The latest-certificate share here (34%) is a little above the 33% earlier because it also counts homes whose latest certificate is from 2012 to 2014.*
 
-- **Latest certificates overstate the problem.** Many are a decade old. Scored as if reassessed today, about one in five homes is likely to be below C, not one in three.
+- **Latest certificates overstate the problem.** About one in five is ten or more years old. Scored as if reassessed today, about one in five homes is likely to be below C, not one in three.
 - **On current evidence, the deadline will be missed.** Clearing every below-C home by April 2030 means about **177,000 fewer below-C homes a year**. Even if the recent improvement trend continues, the fall is about **86,000 a year**, half the pace needed, leaving around 310,000 homes below C.
 - **It is consistent with the national survey.** The English Housing Survey found social rented homes below C falling by about 2 percentage points a year ([30% in 2022, 26% in 2024](https://www.gov.uk/government/statistics/chapters-for-english-housing-survey-2024-to-2025-headline-findings-on-housing-quality-and-energy-efficiency/chapter-2-energy-efficiency)), which would put 2026 at roughly 22%. This estimate of 20% is slightly lower, in line with the first caveat below.
 - **The same two groups dominate.** Scored as if reassessed today, gas-heated houses built in 1930-49 are the largest group likely to be below C (about 84,000), just ahead of those built in 1950-66 (about 79,000). Even if the trend continues, about 43,000 and 38,000 would still be below C in 2030.
@@ -116,7 +116,7 @@ For each pair of consecutive certificates, a logistic regression predicts whethe
 
 Every home is then scored from its latest certificate as if reassessed under current conditions. "Conditions as now" holds the period effect at its RdSAP 10 level until April 2030; "recent trend continues" lets it keep falling at its 2019 to 2025 pace.
 
-A first version assumed homes improve steadily over time (a two-state Markov chain). It failed its backtest because, as above, the time between certificates barely matters while the calendar year matters a lot.
+A first version assumed homes improve steadily over time (a two-state Markov chain). It failed its backtest because, as above, the time between certificates matters far less than the year the next one is lodged.
 
 ![Forecast calibration](reports/england/figures/09_forecast_calibration.png)
 
@@ -141,7 +141,7 @@ Scored as if reassessed today, **Yorkshire and The Humber (26%) and London (23%)
 
 ## Five areas first, then England
 
-The method was developed on five contrasting local authorities: **Manchester, Sheffield and Newcastle upon Tyne** (large northern cities), **Southwark** (an inner London borough) and **Cornwall** (rural and largely off-gas). With 136,000 homes, it was quick to iterate on cleaning, features and validation, and training on four authorities and testing on the fifth was a demanding check that the model transfers to stock it has never seen. The same code then ran unchanged on all of England, which is what the results above report.
+The method was developed on five contrasting local authorities: **Manchester, Sheffield and Newcastle upon Tyne** (large northern cities), **Southwark** (an inner London borough) and **Cornwall** (rural and largely off-gas). With 136,000 homes, it was quick to iterate on cleaning, features and validation, and training on four authorities and testing on the fifth was a demanding check that the model transfers to stock it has never seen. The same method then ran on all of England, with the code adapted to handle data twenty times the size, and that is what the results above report.
 
 The two agree closely, which suggests the findings are not an artefact of the areas chosen:
 
@@ -183,9 +183,9 @@ Full five-area results are in [`reports/summary.md`](reports/summary.md) and [`r
 
 **Source:** [Get energy performance of buildings data](https://get-energy-performance-data.communities.gov.uk/) (MHCLG). This GOV.UK service replaced the old Open Data Communities EPC portal in 2026.
 
-**Coverage:** all 296 English local authorities. The classifier uses certificates lodged from January 2015 to September 2026, latest certificate per home; the forecast also uses earlier certificates, back to 2012. Welsh authorities are in the download but left out, because Wales sets its own standard for social housing.
+**Coverage:** all 296 English local authorities. The classifier uses certificates lodged from January 2015 to October 2026, latest certificate per home; the forecast also uses earlier certificates, back to 2012. Welsh authorities are in the download but left out, because Wales sets its own standard for social housing.
 
-**Development areas:** Manchester (46,296 homes), Sheffield (38,913), Cornwall (19,863), Newcastle upon Tyne (17,800) and Southwark (13,507), latest certificate since 2015.
+**Development areas:** Manchester (46,296 homes), Sheffield (38,913), Cornwall (19,863), Newcastle upon Tyne (17,800) and Southwark (13,507), latest certificate lodged from January 2015 to September 2026.
 
 **Reproducing it**
 
@@ -233,7 +233,7 @@ Raw data is git-ignored and never committed. Check the service's licensing guida
 
 ### Avoiding leakage
 
-An EPC rating is calculated from the certificate's own inputs. Feeding the model fields such as the SAP score, running costs, CO₂ or the per-element efficiency ratings would let it reverse-engineer the formula and report a meaningless near-perfect score. These are listed in `LEAKAGE_COLUMNS` and excluded, and a test checks they never reach the feature table.
+An EPC rating is calculated from the certificate's own inputs. Feeding the model fields such as the SAP score, running costs, CO₂ or the per-element efficiency ratings would let it reverse-engineer the formula and report a meaningless near-perfect score. These are listed in `LEAKAGE_COLUMNS` and excluded, and a test checks they never reach the feature table. The forecast does use the SAP score, but from a home's earlier certificate to predict its later one, which is a genuine prediction rather than leakage.
 
 ### Checking the controls are not a back door
 
@@ -265,7 +265,7 @@ Charts default to a dark theme that matches GitHub's dark mode.
 
 ```bash
 python scripts/make_synthetic_data.py --rows 30000
-python -m housing_epc.pipeline --raw data/synthetic
+python -m housing_epc.pipeline --raw data/synthetic --reports data/synthetic_reports
 
 python scripts/make_synthetic_data.py --history --rows 20000
 python scripts/extract_subset.py data/synthetic_history --history --all-areas --out data/synthetic_history.csv.gz
@@ -283,7 +283,7 @@ England results are in `reports/england/`; the five development areas are in `re
 | `figures/00_below_c_over_time.png` | Share below C by quarter, with RdSAP 10 marked |
 | `figures/01_feature_set_comparison.png` | Core vs extended, logistic vs boosting |
 | `figures/02_calibration_extended.png` | Are predicted probabilities trustworthy? |
-| `figures/03_importance_*.png` | Permutation importance |
+| `figures/03_importance_*.png`, `permutation_importance_*.csv` | Permutation importance |
 | `figures/04_pdp_*.png` | How risk changes with build year, fuel, insulation and more |
 | `archetype_risk.csv` | Risk by property type, build era and fuel |
 | `local_authority_gap.csv` | Observed vs expected below-C share by local authority |
@@ -327,7 +327,7 @@ England results are in `reports/england/`; the five development areas are in `re
 - **Coverage:** only homes with a certificate are included: 3.0 million English social homes with one lodged since 2012. Most social homes have one because an EPC is needed to let a property, but recently let or recently surveyed homes may be over-represented. Welsh homes are excluded.
 - **Reassessed homes are not a random sample.** The forecast learns how ratings change from homes that were assessed again, and some of those were reassessed because work had just been done. This may make the "today" figure optimistic (see [Caveats](#caveats)).
 - **Certificates age:** the classifier describes each home as it was when assessed. The forecast adjusts for change since then, but only through the year effects it learns from reassessed homes.
-- **Build year is a band:** almost all certificates record an age band (such as 1930-1949) rather than a year, so build year is the middle of the band and build eras follow the bands.
+- **Build year is a band:** almost all certificates record an age band (such as 1930-1949) rather than a year, so build year is the middle of the band (or a nearby year for open-ended bands such as "before 1900") and build eras follow the bands.
 - **"Assumed" values:** where an assessor cannot see insulation, RdSAP assumes it from the build era. Some wall and roof insulation values are therefore defaults rather than observations.
 - **Regional gaps are not a league table.** The gap between a region's share below C and what its stock mix predicts can reflect things the model does not see, such as how recently and how often landlords re-certify their homes.
 - **Explanation is not causation:** importance and partial dependence describe what the model learned. They point to where to look, not to proof that changing one feature will change a rating.

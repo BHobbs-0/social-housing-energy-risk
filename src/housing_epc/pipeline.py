@@ -124,9 +124,8 @@ def main(argv=None):
         joblib.dump({"encoder": runs[fs].encoder, "model": runs[fs].booster},
                     config.MODELS_DIR / f"booster_{fs}.joblib")
         if not args.no_cv:
-            regions = table["region"].astype("string").dropna().unique() if "region" in table else []
-            regions = [r for r in regions if r != "Unknown"]
-            if len(regions) >= 3:  # national data: hold out one whole region at a time
+            if features.regions_add_detail(table):  # national data: hold out one whole region at a time
+                regions = [r for r in table["region"].astype("string").dropna().unique() if r != "Unknown"]
                 cv[fs] = model.leave_areas_out_cv(table, fs, n_splits=len(regions), group_col="region")
             else:
                 cv[fs] = model.leave_areas_out_cv(table, fs)
@@ -173,7 +172,7 @@ def main(argv=None):
     archetypes = explain.archetype_table(runs["core"], population=table, min_homes=max(150, len(table) // 1000))
     archetypes.to_csv(config.REPORTS_DIR / "archetype_risk.csv", index=False)
     explain.local_authority_table(runs["core"]).to_csv(config.REPORTS_DIR / "local_authority_gap.csv", index=False)
-    if "region" in table and table["region"].nunique() > 1:
+    if features.regions_add_detail(table):
         regions = explain.local_authority_table(runs["core"], by="region")
         regions = regions[regions["region"].astype(str) != "Unknown"]
         regions.to_csv(config.REPORTS_DIR / "region_gap.csv", index=False)

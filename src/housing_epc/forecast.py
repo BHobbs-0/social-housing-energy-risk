@@ -14,8 +14,9 @@ Three things, each of which shaped the method:
    variation, partly "before" certificates lodged ahead of retrofit work. So the
    model starts from a home's SAP SCORE, not its band: a D at 68 is a near miss,
    a D at 56 is not.
-2. Time between certificates barely matters. The chance of crossing the C line is
-   much the same after six months as after ten years.
+2. Time between certificates matters far less than when the next one is lodged.
+   A longer gap raises the chance of still being below C a little (by around 10
+   points between a short and a long gap in recent years), much less than point 3.
 3. WHEN the next certificate is lodged matters a lot. Homes just below C were
    about 60% likely to still be below C at their next certificate up to 2022, and
    about 30% from 2023. Something shifted across the stock: retrofit programmes,
@@ -48,7 +49,7 @@ conditions (the RdSAP 10 period, which is also the method 2030 certificates use)
 
 * "Today": reassessed now.
 * "2030, conditions as now": reassessed in April 2030 with the period effect held
-  at its current level. Because the gap barely matters, this is close to today.
+  at its current level. Because the gap matters little, this is close to today.
 * "2030, recent trend continues": the period effect keeps falling at its
   2019-2025 pace until April 2030.
 
@@ -560,12 +561,12 @@ def run(history: Path, reports: Path, figures: Path, today: pd.Timestamp, draws:
         reports / "forecast_by_archetype.csv", index=False)
     area = "local_authority_label" if "local_authority_label" in homes else "local_authority"
     breakdown(homes, [area], 50).to_csv(reports / "forecast_by_area.csv", index=False)
-    if "region" in homes and homes["region"].nunique() > 1:
+    if features.regions_add_detail(homes):
         by_region = breakdown(homes, ["region"], 50)
         by_region = by_region[by_region["region"].astype(str) != "Unknown"]
         by_region.to_csv(reports / "forecast_by_region.csv", index=False)
         plot_by_region(by_region, figures / "11_forecast_by_region.png")
-    results["has_regions"] = bool("region" in homes and homes["region"].nunique() > 1)
+    results["has_regions"] = features.regions_add_detail(homes)
     write_summary(reports / "forecast_summary.md", results)
     if len(near):
         plot_near_line(near, figures / "07_near_line_by_year.png")
