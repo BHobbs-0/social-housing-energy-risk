@@ -2,7 +2,7 @@
 
 Social rented homes in England must reach **EPC band C by 1 April 2030**. Landlords need to know which homes are most at risk, but many do not hold up-to-date survey data for every property.
 
-This project uses **136,379 Energy Performance Certificates for social rented homes** in five local authorities (Manchester, Sheffield, Cornwall, Newcastle upon Tyne and Southwark) to answer three questions:
+This project uses Energy Performance Certificates for social rented homes in five local authorities (Manchester, Sheffield, Cornwall, Newcastle upon Tyne and Southwark) to answer three questions:
 
 1. **Prediction:** using only what a typical asset register holds (property type, built form, build year, floor area, fuel), how well can we identify homes likely to be below band C? This is the **core** model.
 2. **Explanation:** what actually drives the risk, and how much better do we do when we also know about walls, roofs, insulation and heating? This is the **extended** model.
@@ -70,7 +70,7 @@ The interwar gas-heated house is not the riskiest archetype, but it is by far th
 
 The share of assessed homes below C fell from around 40% in 2015 to 20% in 2024, then rose again after the assessment method changed to **RdSAP 10 on 15 June 2025**. Holding everything else constant, the model estimates that being assessed under RdSAP 10 adds about **3.4 percentage points** to a home's risk of being below C. Comparing ratings across this change without adjusting for it could make a landlord's stock look worse than it is, so the models include the assessment year and an RdSAP 10 flag as controls.
 
-This chart should not be read as a trend for the whole stock. Each quarter shows the homes that happened to be assessed then (mostly homes being re-let), not a consistent picture of all homes, so extending the line forward would be misleading.
+This chart should not be read as a trend for the whole stock. Each quarter shows the homes that happened to be assessed then (mostly homes being re-let), not a consistent picture of all homes, so extending the line forward would be misleading. The [forecast](#forecasting-the-position-in-2030) looks forward properly, by following the same homes from one certificate to the next.
 
 Full numbers are in [`reports/summary.md`](reports/summary.md) and [`reports/metrics.json`](reports/metrics.json).
 
@@ -177,19 +177,23 @@ Comparing each region's share below C with what its housing stock alone would pr
 
 The 2023 shift is even clearer nationally: for homes just below C, the share still below C at the next certificate was between about 50% and 70% every year to 2022, then fell to 32% in 2024 ([chart](reports/england/figures/07_near_line_by_year.png)).
 
-## What the model is for (and what it isn't)
+## What the project is for (and what it isn't)
 
 ### How a landlord could use it
 
 - **Find at-risk homes without an up-to-date rating.** Score every home from the asset register, including homes with no EPC or an old one, and survey the highest-risk homes first. The core model is the realistic choice here because it only needs data landlords already hold: it scores 0.82 on held-out homes and 0.76 in areas it has never seen (0.80 and 0.79 across England).
-- **Size the problem today.** Because the predicted probabilities are well calibrated, adding them up gives an expected count. If 1,000 unrated homes have an average predicted risk of 35%, roughly 350 of them are likely to be below C. That gives a planning and budgeting figure without surveying every home.
+- **Size the problem today.** For homes with no certificate, the classifier's probabilities are well calibrated, so adding them up gives an expected count: if 1,000 unrated homes have an average predicted risk of 35%, roughly 350 are likely to be below C. For homes with an old certificate, the forecast's "estimated today" is the better figure, because it allows for improvements since the home was last assessed. That is why it finds one in five homes below C rather than one in three.
+- **Prioritise reassessment.** About a third of homes have a latest SAP score within 3 points of the C line. A fresh assessment, or small works such as topping up loft insulation, could move many of them over it, so they are a quick way to cut the number below C.
 - **Target retrofit spending.** Wall insulation, loft insulation and off-gas heating are the strongest drivers of risk, which points to the interventions most likely to move homes over the line.
 - **Decide whether a stock condition survey is worth it.** The jump from 0.82 (core) to 0.90 (extended) puts a number on how much better a landlord can target work once they have survey data.
 - **Plan the programme to 2030.** The forecast gives an expected number of homes below C today and in April 2030 for each area and archetype, under "conditions as now" and "recent trend continues", which brackets the size of the job.
 
 ### What it does not do
 
-**The classifier does not forecast.** It estimates how likely a home is to be below C at the time it was assessed, based on its characteristics, and knows nothing about how quickly homes are being improved. Projecting forward needs ratings measured on the same homes over time, which is what the [2030 forecast](#forecasting-the-position-in-2030) uses.
+- **It does not decide compliance.** The confirmed policy allows other routes to compliance and a spend cap (see [Caveats](#caveats)). This project models the current EPC rating only.
+- **It does not predict 2030.** The forecast shows two scenarios. The data cannot say whether the recent pace of improvement will hold, slow or speed up.
+- **It cannot separate real improvement from changes in assessment.** Ratings shifted sharply around 2023; retrofit programmes, changes in assessment practice and the move to RdSAP 10 all show up together.
+- **It is for ranking and counting, not labelling one home.** Two assessments of the same home can differ by several SAP points, so for a home near the line a single prediction is close to a coin toss. The scores are most useful added up across a stock, or used to decide which homes to look at first.
 
 ## Data
 
@@ -211,12 +215,12 @@ The 2023 shift is even clearer nationally: for homes just below C, the share sti
    ```bash
    python scripts/extract_subset.py path/to/download.csv --history --areas E08000003 E08000039 E06000052 E08000021 E09000028
    ```
-   Current EPC downloads use E08000039 for Sheffield (ONS lookups use E08000019).
+   Put the output in `data/history/`. Current EPC downloads use E08000039 for Sheffield (ONS lookups use E08000019).
 5. For England, run it on the national download (an 8GB zip) with `--all-areas`. In history mode it writes as it reads, so it needs little memory, and the output (about 190MB) feeds both the classifier and the forecast:
    ```bash
    python scripts/extract_subset.py all-domestic-csv.zip --history --all-areas --out epc_social_history_england.csv.gz
    ```
-   For results by region, save the ONS [Local Authority District to Region lookup](https://www.data.gov.uk/dataset/3fbe9109-f329-4c4a-85cb-3b78ea4fbce3/local-authority-district-to-region-december-2024-lookup-in-en) as `data/lookups/lad_to_region.csv` (a copy is included; Open Government Licence).
+   Put the output in `data/england/`. For results by region, save the ONS [Local Authority District to Region lookup](https://www.data.gov.uk/dataset/3fbe9109-f329-4c4a-85cb-3b78ea4fbce3/local-authority-district-to-region-december-2024-lookup-in-en) as `data/lookups/lad_to_region.csv` (a copy is included; Open Government Licence).
 
 Raw data is git-ignored and never committed. Check the service's licensing guidance before redistributing any derived data.
 
@@ -247,7 +251,7 @@ An EPC rating is calculated from the certificate's own inputs. Feeding the model
 
 ### Checking the controls are not a back door
 
-Landlords often commission EPCs in large batches, so assessment dates could act as a proxy for area and inflate the scores. To test this, the models were rerun without the date controls. The controls improve performance on unseen areas too (core: 0.740 without, 0.757 with), so they capture genuine time effects rather than identifying the area.
+Landlords often commission EPCs in large batches, so assessment dates could act as a proxy for area and inflate the scores. To test this, the models were rerun without the date controls. The controls improve performance on unseen areas too (five areas, core model: 0.740 without, 0.757 with), so they capture genuine time effects rather than identifying the area.
 
 ## Running it
 
@@ -298,7 +302,7 @@ python -m housing_epc.forecast --history data/synthetic_history.csv.gz --reports
 | `reports/forecast_2030.json` | All forecast numbers, including backtests |
 | `reports/forecast_by_area.csv`, `forecast_by_archetype.csv` | Expected homes below C today and in 2030 |
 | `reports/figures/07_*`, `08_*`, `09_*` | Repeat certificates by year, forecast scenarios, forecast calibration |
-| `reports/england/` | All of the above for England, plus `region_gap.csv`, `forecast_by_region.csv` and charts `10_*` and `11_*` by region |
+| `reports/england/` | All of the above for England (except SHAP), plus `region_gap.csv`, `forecast_by_region.csv` and charts `10_*` and `11_*` by region |
 
 ## Project structure
 
@@ -330,10 +334,11 @@ python -m housing_epc.forecast --history data/synthetic_history.csv.gz --reports
 
 ## Limitations
 
-- **Five areas, then England:** the detailed results describe five local authorities; the [England results](#scaling-up-to-all-of-england) confirm the model holds up nationally and across regions.
-- **Coverage:** only homes with a certificate are included. Most social homes have one because an EPC is needed to let a property, but recently let or recently surveyed homes may be over-represented.
-- **Certificates age:** a certificate describes the home when it was assessed. Improvements made since then are not captured.
+- **Coverage:** only homes with a certificate are included: 3.0 million English social homes with one lodged since 2012. Most social homes have one because an EPC is needed to let a property, but recently let or recently surveyed homes may be over-represented. Welsh homes are excluded.
+- **Reassessed homes are not a random sample.** The forecast learns how ratings change from homes that were assessed again, and some of those were reassessed because work had just been done. This may make the "today" figure optimistic (see [Caveats](#caveats)).
+- **Certificates age:** the classifier describes each home as it was when assessed. The forecast adjusts for change since then, but only through the year effects it learns from reassessed homes.
 - **"Assumed" values:** where an assessor cannot see insulation, RdSAP assumes it from the build era. Some wall and roof insulation values are therefore defaults rather than observations.
+- **Regional gaps are not a league table.** The gap between a region's share below C and what its stock mix predicts can reflect things the model does not see, such as how recently and how often landlords re-certify their homes.
 - **Explanation is not causation:** importance and partial dependence describe what the model learned. They point to where to look, not to proof that changing one feature will change a rating.
 
 ## Ideas for next steps
@@ -346,4 +351,4 @@ python -m housing_epc.forecast --history data/synthetic_history.csv.gz --reports
 
 ## Licence
 
-Code: MIT (see `LICENSE`). EPC data: subject to MHCLG's licence terms.
+Code: MIT (see `LICENSE`). EPC data: subject to MHCLG's licence terms. Region lookup: ONS, Open Government Licence.

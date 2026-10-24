@@ -489,7 +489,9 @@ def write_summary(path: Path, r: dict):
         lines.append(f"| {row['period']} | {row['pairs']:,} | {row['effect']:+.2f} |")
     lines += ["", f"Recent trend in the period effect: {r['trend_per_year']:+.3f} log-odds a year "
               f"({TREND_FROM_YEAR} to the start of RdSAP 10).", "",
-              "Tables: `forecast_by_archetype.csv`, `forecast_by_area.csv`. Everything else: `forecast_2030.json`.", ""]
+              "Tables: `forecast_by_archetype.csv`, `forecast_by_area.csv`"
+              + (", `forecast_by_region.csv`" if r.get("has_regions") else "")
+              + ". Everything else: `forecast_2030.json`.", ""]
     path.write_text("\n".join(lines), encoding="utf-8")
     print(f"  saved {path}")
 
@@ -563,6 +565,7 @@ def run(history: Path, reports: Path, figures: Path, today: pd.Timestamp, draws:
         by_region = by_region[by_region["region"].astype(str) != "Unknown"]
         by_region.to_csv(reports / "forecast_by_region.csv", index=False)
         plot_by_region(by_region, figures / "11_forecast_by_region.png")
+    results["has_regions"] = bool("region" in homes and homes["region"].nunique() > 1)
     write_summary(reports / "forecast_summary.md", results)
     if len(near):
         plot_near_line(near, figures / "07_near_line_by_year.png")

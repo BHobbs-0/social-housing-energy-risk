@@ -42,4 +42,4 @@ The intervals cover uncertainty in the fitted model only. Which scenario holds i
 
 Recent trend in the period effect: -0.267 log-odds a year (2019 to the start of RdSAP 10).
 
-Tables: `forecast_by_archetype.csv`, `forecast_by_area.csv`. Everything else: `forecast_2030.json`.
+Tables: `forecast_by_archetype.csv`, `forecast_by_area.csv`, `forecast_by_region.csv`. Everything else: `forecast_2030.json`.
