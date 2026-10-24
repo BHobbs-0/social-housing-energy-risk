@@ -1,0 +1,271 @@
+{
+  "homes": 156256,
+  "certificates": 208473,
+  "pairs": 42703,
+  "fit_pairs": 37613,
+  "today": "2026-10-24",
+  "target_date": "2030-04-01",
+  "homes_with_more_than_one_certificate": 41521,
+  "works_triggered_share": 0.0891674221601838,
+  "near_line_share": 0.3479674380503789,
+  "scenarios": {
+    "latest_certificates": {
+      "count": 51413.0,
+      "share": 0.3290305652262953
+    },
+    "today": {
+      "count": 33623.013282230524,
+      "share": 0.2151790221318255,
+      "count_90pc": [
+        32546.497458617345,
+        34607.66398815827
+      ],
+      "share_90pc": [
+        0.20828958541507106,
+        0.22148054467129752
+      ]
+    },
+    "conditions_as_now": {
+      "count": 37547.118316105,
+      "share": 0.24029232999760008,
+      "count_90pc": [
+        36435.08708073442,
+        38388.245925259675
+      ],
+      "share_90pc": [
+        0.23317560337353074,
+        0.24567533998860636
+      ]
+    },
+    "trend_continues": {
+      "count": 19176.320803766394,
+      "share": 0.12272374055246771,
+      "count_90pc": [
+        17832.818009687813,
+        20201.51802015212
+      ],
+      "share_90pc": [
+        0.11412565283693307,
+        0.12928475079454307
+      ]
+    }
+  },
+  "pace": {
+    "years_left": 3.436002737850787,
+    "needed_per_year": 9785.502471183028,
+    "trend_per_year": 4204.505520126712
+  },
+  "trend_per_year": -0.23712520814866128,
+  "period_effects": [
+    {
+      "period": "2013",
+      "pairs": 132,
+      "midpoint": 2013.6907473088174,
+      "effect": 0.9960920099473458
+    },
+    {
+      "period": "2014",
+      "pairs": 472,
+      "midpoint": 2014.4699184445294,
+      "effect": 0.9222138966161325
+    },
+    {
+      "period": "2015",
+      "pairs": 688,
+      "midpoint": 2015.5623338586186,
+      "effect": 0.587857787824263
+    },
+    {
+      "period": "2016",
+      "pairs": 660,
+      "midpoint": 2016.51502291913,
+      "effect": 0.08110980890521598
+    },
+    {
+      "period": "2017",
+      "pairs": 1236,
+      "midpoint": 2017.648744376441,
+      "effect": 0.7665924352197262
+    },
+    {
+      "period": "2018",
+      "pairs": 733,
+      "midpoint": 2018.5297778624406,
+      "effect": 0.018880194647679788
+    },
+    {
+      "period": "2019",
+      "pairs": 648,
+      "midpoint": 2019.4003430763642,
+      "effect": -0.21720318035719471
+    },
+    {
+      "period": "2020",
+      "pairs": 529,
+      "midpoint": 2020.5488510989574,
+      "effect": 0.22333436754380945
+    },
+    {
+      "period": "2021",
+      "pairs": 3803,
+      "midpoint": 2021.4926040053035,
+      "effect": 0.06154448303424548
+    },
+    {
+      "period": "2022",
+      "pairs": 3206,
+      "midpoint": 2022.568515655323,
+      "effect": -0.137437221723227
+    },
+    {
+      "period": "2023",
+      "pairs": 4624,
+      "midpoint": 2023.4333856745984,
+      "effect": -0.5797686018458045
+    },
+    {
+      "period": "2024",
+      "pairs": 3832,
+      "midpoint": 2024.5196479375381,
+      "effect": -1.1642383565364491
+    },
+    {
+      "period": "2025",
+      "pairs": 7099,
+      "midpoint": 2025.2680704563666,
+      "effect": -0.8528017480652489
+    },
+    {
+      "period": "RdSAP 10",
+      "pairs": 9951,
+      "midpoint": 2026.2606073662384,
+      "effect": -0.7320436098145259
+    }
+  ],
+  "near_line_by_period": [
+    {
+      "period": "2014",
+      "pairs": 149,
+      "still_below": 0.6779,
+      "mean_gap": 0.7156,
+      "midpoint": 2014.4335
+    },
+    {
+      "period": "2015",
+      "pairs": 182,
+      "still_below": 0.5769,
+      "mean_gap": 1.2981,
+      "midpoint": 2015.5548
+    },
+    {
+      "period": "2016",
+      "pairs": 202,
+      "still_below": 0.4703,
+      "mean_gap": 1.6645,
+      "midpoint": 2016.4952
+    },
+    {
+      "period": "2017",
+      "pairs": 441,
+      "still_below": 0.644,
+      "mean_gap": 2.3691,
+      "midpoint": 2017.7154
+    },
+    {
+      "period": "2018",
+      "pairs": 268,
+      "still_below": 0.4515,
+      "mean_gap": 2.3967,
+      "midpoint": 2018.497
+    },
+    {
+      "period": "2019",
+      "pairs": 214,
+      "still_below": 0.472,
+      "mean_gap": 3.4241,
+      "midpoint": 2019.4155
+    },
+    {
+      "period": "2020",
+      "pairs": 168,
+      "still_below": 0.4226,
+      "mean_gap": 4.748,
+      "midpoint": 2020.5733
+    },
+    {
+      "period": "2021",
+      "pairs": 1271,
+      "still_below": 0.5374,
+      "mean_gap": 5.2003,
+      "midpoint": 2021.481
+    },
+    {
+      "period": "2022",
+      "pairs": 948,
+      "still_below": 0.5264,
+      "mean_gap": 4.6767,
+      "midpoint": 2022.55
+    },
+    {
+      "period": "2023",
+      "pairs": 1708,
+      "still_below": 0.3747,
+      "mean_gap": 5.6791,
+      "midpoint": 2023.4405
+    },
+    {
+      "period": "2024",
+      "pairs": 1306,
+      "still_below": 0.2412,
+      "mean_gap": 6.5374,
+      "midpoint": 2024.5417
+    },
+    {
+      "period": "2025",
+      "pairs": 2279,
+      "still_below": 0.3659,
+      "mean_gap": 6.7791,
+      "midpoint": 2025.2685
+    },
+    {
+      "period": "RdSAP 10",
+      "pairs": 3303,
+      "still_below": 0.3491,
+      "mean_gap": 7.2373,
+      "midpoint": 2026.2611
+    }
+  ],
+  "backtests": [
+    {
+      "label": "Stable years: fit to 2020, test 2021-22",
+      "train_pairs": 5098,
+      "test_pairs": 7009,
+      "period_assumed": "2020",
+      "observed_below": 0.4161791981737766,
+      "predicted_below": 0.5333138124600284,
+      "observed_still_below_if_started_below": 0.5527405602923264,
+      "predicted_still_below_if_started_below": 0.696272727293554,
+      "brier": 0.2205813728866679,
+      "brier_assume_no_change": 0.35440148380653447
+    },
+    {
+      "label": "Across the 2023 shift: fit to 2022, test 2023 to RdSAP 10",
+      "train_pairs": 12107,
+      "test_pairs": 15555,
+      "period_assumed": "2022",
+      "observed_below": 0.23947283831565414,
+      "predicted_below": 0.2961639412448733,
+      "observed_still_below_if_started_below": 0.38541811604285514,
+      "predicted_still_below_if_started_below": 0.46994418866887594,
+      "brier": 0.16506722379081507,
+      "brier_assume_no_change": 0.3453551912568306
+    }
+  ],
+  "recent_cv": {
+    "pairs": 25506,
+    "brier": 0.16777423679482475,
+    "brier_assume_no_change": 0.3662667607621736,
+    "observed_below": 0.25739041794087664,
+    "predicted_below": 0.25752331235251064
+  }
+}

@@ -20,3 +20,8 @@ jobs:
         run: |
           python scripts/make_synthetic_data.py --rows 5000
           python -m housing_epc.pipeline --raw data/synthetic --no-shap
+      - name: Forecast smoke test on synthetic history
+        run: |
+          python scripts/make_synthetic_data.py --history --rows 4000
+          python scripts/extract_subset.py data/synthetic_history --history --all-areas --out data/synthetic_history.csv.gz
+          python -m housing_epc.forecast --history data/synthetic_history.csv.gz --reports data/synthetic_reports --bootstrap 2

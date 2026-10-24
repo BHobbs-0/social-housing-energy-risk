@@ -1,7 +1,11 @@
 # Data: EPC downloads contain addresses and are large. Never commit them.
 data/raw/*
 data/processed/*
+data/history/
 data/synthetic/
+data/synthetic_history/
+data/synthetic_history.csv.gz
+data/synthetic_reports/
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 

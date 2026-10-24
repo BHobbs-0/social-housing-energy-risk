@@ -5,6 +5,10 @@ runs end to end. Never publish results from synthetic data as findings.
 
     python scripts/make_synthetic_data.py --rows 30000
     python -m housing_epc.pipeline --raw data/synthetic
+
+    python scripts/make_synthetic_data.py --history --rows 20000   # repeat certificates for the forecast
+    python scripts/extract_subset.py data/synthetic_history --history --all-areas --out data/synthetic_history.csv.gz
+    python -m housing_epc.forecast --history data/synthetic_history.csv.gz
 """
 
 from __future__ import annotations
@@ -110,13 +114,69 @@ def make(rows: int, seed: int = 0) -> pd.DataFrame:
     return df
 
 
+TRANSACTIONS = ["rental (social)", "Stock condition survey", "none of the above", "not recorded"]
+
+
+def make_history(homes: int, seed: int = 0) -> pd.DataFrame:
+    """Several certificates per home, with ratings that improve over time.
+
+    Each home gets 1 to 4 certificates between 2008 and late 2026. Underneath, its SAP
+    score improves through occasional retrofit jobs, more often for homes below C and
+    for electrically heated homes; solid-walled homes are improved less often. Each
+    certificate adds assessor noise, and certificates lodged under RdSAP 10 score lower.
+    Some certificates are lodged because works were done, which makes reassessed homes
+    look better than the stock as a whole, as in the real data.
+    """
+    rng = np.random.default_rng(seed + 1)
+    base = make(homes, seed)
+    base["TENURE"] = rng.choice(["rental (social)", "Rented (social)"], homes)
+    sap_now = base.pop("CURRENT_ENERGY_EFFICIENCY").to_numpy(float)  # condition in 2015, before later works
+    electric = base["MAIN_FUEL"].str.startswith("electricity").to_numpy()
+    solid = base["WALLS_DESCRIPTION"].str.startswith("Solid").to_numpy()
+
+    years = np.arange(2008, 2027)
+    sap = np.empty((homes, len(years)))
+    level = sap_now - 7  # homes were in worse shape in 2008
+    last_job = np.full(homes, -99.0)
+    job_year = np.full((homes, len(years)), -99.0)
+    for j, y in enumerate(years):
+        rate = 0.035 * np.where(level < 69, 2.0, 0.5) * np.where(electric, 1.6, 1.0) * np.where(solid, 0.6, 1.0)
+        rate *= 1.3 if y >= 2021 else 1.0  # funding picked up
+        job = rng.random(homes) < 1 - np.exp(-rate)
+        level = np.minimum(level + job * rng.uniform(6, 14, homes), 95)
+        last_job = np.where(job, y + rng.random(homes), last_job)
+        sap[:, j] = level
+        job_year[:, j] = last_job
+
+    n_certs = rng.choice([1, 2, 3, 4], homes, p=[0.45, 0.3, 0.17, 0.08])
+    rows = []
+    start, span = pd.Timestamp("2008-01-01"), 365 * 18 + 270
+    for i in range(homes):
+        offsets = np.sort(rng.integers(0, span, n_certs[i]))
+        for off in offsets:
+            date = start + pd.Timedelta(days=int(off))
+            j = min(date.year - 2008, len(years) - 1)
+            score = sap[i, j] + rng.normal(0, 2.5) - 3.0 * (date >= pd.Timestamp("2025-06-15"))
+            score = float(np.clip(round(score), 1, 100))
+            after_works = 0 <= date.year + date.dayofyear / 366 - job_year[i, j] < 0.5
+            trans = "ECO assessment" if after_works and rng.random() < 0.7 else rng.choice(TRANSACTIONS, p=[0.75, 0.1, 0.1, 0.05])
+            row = base.iloc[i].to_dict()
+            row.update({"LMK_KEY": f"SYNH{len(rows):09d}", "UPRN": str(10**9 + i),
+                        "CURRENT_ENERGY_EFFICIENCY": int(score), "CURRENT_ENERGY_RATING": sap_to_band([score])[0],
+                        "LODGEMENT_DATE": date.strftime("%Y-%m-%d"), "TRANSACTION_TYPE": trans})
+            rows.append(row)
+    return pd.DataFrame(rows)
+
+
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
     p.add_argument("--rows", type=int, default=30_000)
-    p.add_argument("--out", type=Path, default=ROOT / "data" / "synthetic")
+    p.add_argument("--out", type=Path, default=None)
+    p.add_argument("--history", action="store_true", help="several certificates per home (--rows = homes)")
     args = p.parse_args()
+    args.out = args.out or ROOT / "data" / ("synthetic_history" if args.history else "synthetic")
     args.out.mkdir(parents=True, exist_ok=True)
-    df = make(args.rows)
+    df = make_history(args.rows) if args.history else make(args.rows)
     path = args.out / "certificates.csv"
     df.to_csv(path, index=False)
     print(f"Wrote {len(df):,} SYNTHETIC rows to {path}")

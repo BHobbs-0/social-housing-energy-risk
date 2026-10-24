@@ -2,10 +2,11 @@
 
 Social rented homes in England must reach **EPC band C by 1 April 2030**. Landlords need to know which homes are most at risk, but many do not hold up-to-date survey data for every property.
 
-This project uses **136,379 Energy Performance Certificates for social rented homes** in five local authorities (Manchester, Sheffield, Cornwall, Newcastle upon Tyne and Southwark) to answer two questions:
+This project uses **136,379 Energy Performance Certificates for social rented homes** in five local authorities (Manchester, Sheffield, Cornwall, Newcastle upon Tyne and Southwark) to answer three questions:
 
 1. **Prediction:** using only what a typical asset register holds (property type, built form, build year, floor area, fuel), how well can we identify homes likely to be below band C? This is the **core** model.
 2. **Explanation:** what actually drives the risk, and how much better do we do when we also know about walls, roofs, insulation and heating? This is the **extended** model.
+3. **Forecast:** using homes that have been assessed more than once, how many are likely to be below C today, and on 1 April 2030? See [Forecasting the position in 2030](#forecasting-the-position-in-2030).
 
 ## Headline results
 
@@ -64,6 +65,65 @@ This chart should not be read as a trend for the whole stock. Each quarter shows
 
 Full numbers are in [`reports/summary.md`](reports/summary.md) and [`reports/metrics.json`](reports/metrics.json).
 
+## Forecasting the position in 2030
+
+The models above are a snapshot. To look forward, the forecast uses homes that have been assessed more than once: **208,473 certificates for 156,256 homes**, of which 41,521 have two or more, giving 37,613 usable pairs of consecutive certificates on the same home.
+
+### What repeat certificates show
+
+![Homes just below C at the next certificate](reports/figures/07_near_line_by_year.png)
+
+- **A single certificate is a noisy reading.** Low scores tend to rise and high scores tend to fall at the next certificate, whatever the gap: partly assessor variation, partly "before" certificates lodged ahead of retrofit work. **35% of homes have a latest SAP score within 3 points of the C line** (66 to 71), where one reassessment can tip them either way.
+- **When a home is reassessed matters more than how long since its last certificate.** For homes rated just below C, the share still below C at the next certificate was between about 40% and 70% up to 2022, then fell to 24% for certificates lodged in 2024. It is 35% under RdSAP 10, which scores the same home a little lower.
+- **The national picture shows the same shift.** The [English Housing Survey](https://www.gov.uk/government/statistics/chapters-for-english-housing-survey-2024-to-2025-headline-findings-on-housing-quality-and-energy-efficiency/introduction-and-key-findings) found band D fell from 43% to 35% of all homes in England between 2022 and 2024.
+
+### The forecast
+
+![Forecast to 2030](reports/figures/08_forecast_2030.png)
+
+| Position | Expected homes below C | Share |
+|---|---|---|
+| Latest certificates, taken at face value | 51,413 | 32.9% |
+| Estimated today (October 2026) | 33,623 | 21.5% (20.8% to 22.1%) |
+| 1 April 2030, conditions as now | 37,547 | 24.0% (23.3% to 24.6%) |
+| 1 April 2030, recent trend continues | 19,176 | 12.3% (11.4% to 12.9%) |
+
+*Ranges are 90% intervals from refitting the model on resampled homes. They cover uncertainty in the fit, not in which scenario holds.*
+
+- **Latest certificates overstate the problem.** Many are a decade old. Scored as if reassessed today, about one in five homes is likely to be below C, not one in three.
+- **On current evidence, the deadline will be missed.** Clearing every below-C home by April 2030 means about **9,800 fewer below-C homes a year**. Even if the recent improvement trend continues, the fall is about **4,200 a year**, leaving around 12% of homes below C.
+- **The pace matches national data.** The English Housing Survey shows social rented homes below C falling by about 2 percentage points a year ([30% in 2022, 26% in 2024](https://www.gov.uk/government/statistics/chapters-for-english-housing-survey-2024-to-2025-headline-findings-on-housing-quality-and-energy-efficiency/chapter-2-energy-efficiency)), close to the "trend continues" scenario.
+- **The biggest group is unchanged.** Interwar gas-heated houses are still the largest at-risk archetype: about 7,000 likely to be below C today, and about 4,100 in 2030 even if the trend continues.
+
+| Area | Homes | Below C today | 2030, trend continues |
+|---|---|---|---|
+| Manchester | 51,989 | 18.2% | 9.9% |
+| Southwark | 19,175 | 21.2% | 11.6% |
+| Sheffield | 42,904 | 22.5% | 13.1% |
+| Cornwall | 21,505 | 23.0% | 14.0% |
+| Newcastle upon Tyne | 20,683 | 26.6% | 15.5% |
+
+Full numbers are in [`reports/forecast_summary.md`](reports/forecast_summary.md), with tables by area and archetype alongside.
+
+### How it works
+
+For each pair of consecutive certificates, a logistic regression predicts whether the later one is below C from the earlier certificate's **SAP score** (a D at 68 is a near miss, a D at 56 is not), the gap between them, whether the earlier certificate was lodged because of works, property type, build era, fuel, area, and the **period** the later certificate was lodged in (each year, with RdSAP 10 as a period of its own). Pairs whose later certificate was itself lodged because of works (ECO, grant schemes) are left out, so the model describes a routine reassessment.
+
+Every home is then scored from its latest certificate as if reassessed under current conditions. "Conditions as now" holds the period effect at its RdSAP 10 level until April 2030; "recent trend continues" lets it keep falling at its 2019 to 2025 pace.
+
+A first version assumed homes improve steadily over time (a two-state Markov chain). It failed its backtest because, as above, the time between certificates barely matters while the calendar year matters a lot.
+
+![Forecast calibration](reports/figures/09_forecast_calibration.png)
+
+**Checks.** On recent reassessments of homes the model never saw, it predicts 25.8% below C against 25.7% observed, and its Brier score is 0.168 against 0.366 for assuming each home keeps its band. Fitted only on data to 2022, it would have predicted 29.6% below C for 2023 to mid-2025 against 23.9% observed: it could not have seen the 2023 shift coming, which is why 2030 is shown as scenarios rather than one number.
+
+### Caveats
+
+- **The "today" figure may be optimistic.** Landlords often lodge a routine-looking certificate after works, so recently reassessed homes may be better than the stock as a whole. The model shows a sign of this: at the same starting score, a home reassessed soon after a low rating is less likely to still be below C than one reassessed years later, which is also why "conditions as now" sits a little above "today". The 21.5% estimate is below the national 26% for 2024, though these five areas may simply be ahead.
+- **Real improvement and assessment practice cannot be separated.** The period effects capture both.
+- **The trend scenario is an extrapolation.** Nothing in the data says the 2019 to 2025 pace will hold.
+- **Compliance is not just the current rating.** Under the [confirmed policy](https://www.elmhurstenergy.co.uk/blog/2026/02/03/social-rented-homes-to-reach-epc-c-by-1st-april-2030/), homes can comply through new fabric, heating or smart-readiness metrics, and a £10,000 spend cap allows deferral. This forecast is about the current EPC rating only.
+
 ## What the model is for (and what it isn't)
 
 ### How a landlord could use it
@@ -75,7 +135,7 @@ Full numbers are in [`reports/summary.md`](reports/summary.md) and [`reports/met
 
 ### What it does not do
 
-**It does not forecast how many homes will be below C in 2030.** The model is a snapshot: it estimates how likely a home is to be below C at the time it was assessed, based on its characteristics. It knows nothing about how quickly homes are being improved, so it cannot project the stock forward. A forecast needs improvement rates measured on the same homes over time; see the first item in [Ideas for next steps](#ideas-for-next-steps).
+**The classifier does not forecast.** It estimates how likely a home is to be below C at the time it was assessed, based on its characteristics, and knows nothing about how quickly homes are being improved. Projecting forward needs ratings measured on the same homes over time, which is what the [2030 forecast](#forecasting-the-position-in-2030) uses.
 
 ## Data
 
@@ -93,6 +153,11 @@ Full numbers are in [`reports/summary.md`](reports/summary.md) and [`reports/met
    ```
    This keeps social rented homes since 2015, keeps the latest certificate per home, drops addresses and writes a small `epc_social_subset.csv.gz`.
 3. Put that file (or the raw CSVs) anywhere under `data/raw/` and run the pipeline.
+4. For the 2030 forecast, run the same script with `--history`. This keeps every social rented certificate for each home, plus the SAP score and the reason the certificate was lodged, and links them with an anonymous `home_id` (a hash with a random salt that is never saved, so it cannot be traced back to an address):
+   ```bash
+   python scripts/extract_subset.py path/to/download.csv --history --areas E08000003 E08000039 E06000052 E08000021 E09000028
+   ```
+   Sheffield's code is E08000039 in current downloads (it was E08000019 before a 2019 boundary change).
 
 Raw data is git-ignored and never committed. Check the service's licensing guidance before redistributing any derived data.
 
@@ -109,6 +174,7 @@ Raw data is git-ignored and never committed. Check the service's licensing guida
 | Models | Logistic regression baseline and histogram gradient boosting, on **core** and **extended** feature sets | `model.py` |
 | Validation | Stratified 80/20 held-out test set, plus leave-one-local-authority-out cross-validation | `model.py` |
 | Explanation | Permutation importance, partial dependence, SHAP values (optional), archetype and area tables | `explain.py` |
+| Forecast | Pairs of consecutive certificates per home, logistic regression with period effects, scenarios to April 2030 | `forecast.py` |
 
 ### Feature sets
 
@@ -134,6 +200,7 @@ pip install -e ".[shap,dev]"
 python -m housing_epc.pipeline                    # full run on data/raw (about 2 minutes for 136k homes)
 python -m housing_epc.pipeline --sample 200000    # random subsample for very large inputs
 python -m housing_epc.pipeline --theme light      # light charts instead of the default dark
+python -m housing_epc.forecast --history data/history   # 2030 forecast from a --history extract
 pytest                                            # unit tests
 ```
 
@@ -144,6 +211,10 @@ Charts default to a dark theme that matches GitHub's dark mode.
 ```bash
 python scripts/make_synthetic_data.py --rows 30000
 python -m housing_epc.pipeline --raw data/synthetic
+
+python scripts/make_synthetic_data.py --history --rows 20000
+python scripts/extract_subset.py data/synthetic_history --history --all-areas --out data/synthetic_history.csv.gz
+python -m housing_epc.forecast --history data/synthetic_history.csv.gz --reports data/synthetic_reports
 ```
 
 ## Outputs
@@ -160,12 +231,17 @@ python -m housing_epc.pipeline --raw data/synthetic
 | `reports/figures/05_*`, `06_*` | SHAP importance and dependence (generated when `shap` is installed) |
 | `reports/archetype_risk.csv` | Risk by property type, build era and fuel |
 | `reports/local_authority_gap.csv` | Observed vs expected below-C share by area |
+| `reports/forecast_summary.md` | 2030 forecast: scenarios, checks and period effects |
+| `reports/forecast_2030.json` | All forecast numbers, including backtests |
+| `reports/forecast_by_area.csv`, `forecast_by_archetype.csv` | Expected homes below C today and in 2030 |
+| `reports/figures/07_*`, `08_*`, `09_*` | Repeat certificates by year, forecast scenarios, forecast calibration |
 
 ## Project structure
 
 ```
 ├── data/
 │   ├── raw/                    # EPC downloads go here (git-ignored)
+│   ├── history/                # --history extracts for the forecast (git-ignored)
 │   └── processed/              # cleaned modelling table (git-ignored)
 ├── notebooks/
 │   └── 01_explore.ipynb        # exploratory analysis of the cleaned table
@@ -180,6 +256,7 @@ python -m housing_epc.pipeline --raw data/synthetic
 │   ├── features.py             # cleaning and feature engineering
 │   ├── model.py                # training and validation
 │   ├── explain.py              # importance, partial dependence, SHAP, tables
+│   ├── forecast.py             # 2030 forecast from repeat certificates
 │   └── pipeline.py             # end-to-end command line entry point
 └── tests/
 ```
@@ -194,7 +271,7 @@ python -m housing_epc.pipeline --raw data/synthetic
 
 ## Ideas for next steps
 
-- **Forecast the position in 2030.** Homes with more than one certificate show how often ratings improve, for example how many D-rated homes become C each year and how that varies by archetype. Combining those rates with the model's risk scores would give a projection to April 2030 under scenarios such as "current pace of improvement" against "planned retrofit programme". Homes that get reassessed are not a random sample, and the RdSAP 10 change affects comparisons across mid-2025, so both would need handling.
+- Add a "planned retrofit programme" scenario to the forecast, for example a landlord's own works list scored home by home.
 - Scale up to the full national dataset and compare regions.
 - Join deprivation data (Index of Multiple Deprivation via postcode to LSOA): are the highest-risk homes concentrated in the most deprived areas?
 - Use the recommendations file to estimate the cost of bringing each archetype up to band C.
