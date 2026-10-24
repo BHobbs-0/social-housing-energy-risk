@@ -20,6 +20,11 @@ from .load import compact, concat_compact
 # ---------------------------------------------------------------------------
 # Field parsers (each takes a Series of raw strings and returns a clean Series)
 # ---------------------------------------------------------------------------
+def to_dates(s: pd.Series) -> pd.Series:
+    """Parse dates. Text first, because a categorical column can come back categorical rather than as dates."""
+    return pd.to_datetime(s.astype("string"), errors="coerce").astype("datetime64[ns]")
+
+
 def _lower(s: pd.Series) -> pd.Series:
     return s.astype("string").str.strip().str.lower()
 
@@ -163,7 +168,7 @@ def keep_latest_certificate(df: pd.DataFrame) -> pd.DataFrame:
     """
     df = df.copy()
     sort_col = "lodgement_datetime" if "lodgement_datetime" in df else "lodgement_date"
-    df["_ts"] = pd.to_datetime(df[sort_col], errors="coerce")
+    df["_ts"] = to_dates(df[sort_col])
 
     key = pd.Series(pd.NA, index=df.index, dtype="string")
     if "home_id" in df:
@@ -223,7 +228,7 @@ def build_features(df: pd.DataFrame) -> pd.DataFrame:
     out["local_authority"] = df["local_authority"].astype("string")
     if "local_authority_label" in df:
         out["local_authority_label"] = df["local_authority_label"].astype("string")
-    lodged = pd.to_datetime(df["lodgement_date"], errors="coerce")
+    lodged = to_dates(df["lodgement_date"])
     out["lodgement_date"] = lodged.dt.strftime("%Y-%m-%d")
     out["lodgement_year"] = lodged.dt.year
     out["rdsap10"] = (lodged >= config.RDSAP10_START).astype(float).where(lodged.notna())
@@ -279,6 +284,8 @@ def england_only(df: pd.DataFrame) -> pd.DataFrame:
 
 def age_band_label(year: pd.Series) -> pd.Series:
     """Readable build-era bands for reporting."""
-    bins = [0, 1919, 1945, 1965, 1983, 2002, 3000]
-    labels = ["pre-1919", "1919-44", "1945-64", "1965-82", "1983-2002", "2003+"]
+    # Edges follow the EPC age bands (before 1900 and 1900-1929, 1930-1949, 1950-1966,
+    # 1967-1975 and 1976-1982, ...), so each era is made of whole bands.
+    bins = [0, 1930, 1950, 1967, 1983, 2003, 3000]
+    labels = ["pre-1930", "1930-49", "1950-66", "1967-82", "1983-2002", "2003+"]
     return pd.cut(year, bins=bins, labels=labels, right=False).astype("object")

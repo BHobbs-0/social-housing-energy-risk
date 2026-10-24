@@ -51,15 +51,15 @@ Adding survey-level fabric and heating detail moves gradient boosting ROC AUC fr
 
 | Property type | Build era | Main fuel | Homes | Actual below C | Predicted |
 |---|---|---|---|---|---|
-| House | 1919-44 | oil | 608 | 92% | 90% |
-| House | 1945-64 | oil | 820 | 86% | 85% |
-| House | pre-1919 | electricity | 738 | 78% | 76% |
-| Flat | pre-1919 | electricity | 2,713 | 72% | 71% |
-| Bungalow | pre-1919 | mains_gas | 682 | 71% | 70% |
-| Maisonette | 1965-82 | electricity | 557 | 73% | 70% |
-| Flat | 1919-44 | electricity | 709 | 70% | 69% |
-| House | 1965-82 | electricity | 1,668 | 67% | 66% |
+| House | 1930-49 | oil | 608 | 92% | 90% |
+| House | 1950-66 | oil | 820 | 86% | 85% |
+| House | pre-1930 | electricity | 738 | 78% | 76% |
+| Flat | pre-1930 | electricity | 2,713 | 72% | 71% |
+| Bungalow | pre-1930 | mains_gas | 682 | 71% | 70% |
+| Maisonette | 1967-82 | electricity | 557 | 73% | 70% |
+| Flat | 1930-49 | electricity | 709 | 70% | 69% |
+| House | 1967-82 | electricity | 1,668 | 67% | 66% |
 | House | 1983-2002 | electricity | 2,640 | 66% | 65% |
-| House | 1919-44 | electricity | 1,561 | 62% | 64% |
+| House | 1930-49 | electricity | 1,561 | 62% | 64% |
 
 Figures are in `reports/england/figures/`. Archetype and area tables are in `reports/england/`.

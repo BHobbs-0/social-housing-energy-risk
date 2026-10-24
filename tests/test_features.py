@@ -126,3 +126,23 @@ def test_add_region_from_lookup(tmp_path):
     lookup = features.load_region_lookup(path)
     df = features.add_region(pd.DataFrame({"local_authority": ["E09000028", "E99999999"]}), lookup)
     assert df["region"].astype(str).tolist() == ["London", "Unknown"]
+
+
+def test_build_eras_are_whole_epc_bands():
+    bands = s("England and Wales: before 1900", "England and Wales: 1900-1929", "England and Wales: 1930-1949",
+              "England and Wales: 1950-1966", "England and Wales: 1967-1975", "England and Wales: 1976-1982",
+              "England and Wales: 1983-1990", "England and Wales: 1996-2002", "England and Wales: 2003-2006",
+              "England and Wales: 2012 onwards")
+    eras = features.age_band_label(features.parse_construction_year(bands)).tolist()
+    assert eras == ["pre-1930", "pre-1930", "1930-49", "1950-66", "1967-82", "1967-82",
+                    "1983-2002", "1983-2002", "2003+", "2003+"]
+
+
+def test_dates_stored_as_categories_still_sort_by_date():
+    # categories in "first seen" order, not date order, as after concatenating chunks
+    dates = pd.Series(pd.Categorical(["2024-05-01", "2016-01-01", "2020-03-01"],
+                                     categories=["2024-05-01", "2016-01-01", "2020-03-01"]))
+    df = pd.DataFrame({"home_id": ["a", "a", "a"], "lodgement_date": dates})
+    out = features.keep_latest_certificate(df)
+    assert out["lodgement_date"].astype(str).tolist() == ["2024-05-01"]
+    assert features.to_dates(dates).dt.year.tolist() == [2024, 2016, 2020]

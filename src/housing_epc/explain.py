@@ -25,7 +25,7 @@ from sklearn.calibration import calibration_curve
 from sklearn.inspection import permutation_importance
 
 from . import config
-from .features import age_band_label
+from .features import age_band_label, to_dates
 from .model import RunResult
 
 # Chart styling: one accent colour, recessive axes, readable labels.
@@ -158,7 +158,7 @@ def plot_calibration(y_true, prob, path: Path, title: str):
 def plot_rate_over_time(table: pd.DataFrame, path: Path, min_homes: int = 200):
     """Observed share below C by quarter of assessment, with the RdSAP 10 change marked."""
     df = table.dropna(subset=["lodgement_date"]).copy()
-    df["quarter"] = pd.to_datetime(df["lodgement_date"], errors="coerce").dt.to_period("Q").dt.start_time
+    df["quarter"] = to_dates(df["lodgement_date"]).dt.to_period("Q").dt.start_time
     q = df.groupby("quarter")["below_c"].agg(["mean", "size"])
     q = q[q["size"] >= min_homes]
     fig, ax = plt.subplots(figsize=(7.5, 3.8))
